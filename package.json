@@ -1,0 +1,21 @@
+{
+  "name": "wics-creative-ops",
+  "version": "1.0.0",
+  "description": "Marketing Request Pipeline & Asset Library for SFU WiCS",
+  "scripts": {
+    "test": "jest",
+    "push": "clasp push",
+    "open": "clasp open-script"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs",
+  "devDependencies": {
+    "@google/clasp": "^3.4.1",
+    "jest": "^30.5.2"
+  },
+  "jest": {
+    "testEnvironment": "node"
+  }
+}
