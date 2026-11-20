@@ -15,6 +15,8 @@ npx clasp open-script
 `.clasp.json` holds your script ID. It's git-ignored so it never reaches the public repo.
 
 ## 2. Build the Google side
+> **Drive safety:** the script only asks for `drive.file` ("only files this app creates"), not full Drive access. Google blocks it from reading or changing any other file in your Drive, including the WiCS Drive. It does ask for Forms and Sheets access, because it creates and writes to its own Form and Report Sheet.
+
 In the Apps Script editor, pick **`setupGoogleSide`** and click **Run**, then approve the permissions. The log will show:
 - **Report Sheet**: `Routing`, `IntakeLog` and `RunLog` tabs, plus a `Form Responses` tab as a raw backup
 - **Form**: edit link and share link

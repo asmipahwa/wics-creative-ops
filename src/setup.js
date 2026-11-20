@@ -39,15 +39,15 @@ function setupGoogleSide() {
 
   // Requests working-folder root
   var folderId = getProp_(P.REQUESTS_FOLDER_ID);
-  var folder = folderId ? DriveApp.getFolderById(folderId) : DriveApp.createFolder(CONFIG.REQUESTS_FOLDER_NAME);
-  setProp_(P.REQUESTS_FOLDER_ID, folder.getId());
+  var folder = folderId ? { id: folderId, url: 'https://drive.google.com/drive/folders/' + folderId } : createFolder_(CONFIG.REQUESTS_FOLDER_NAME);
+  setProp_(P.REQUESTS_FOLDER_ID, folder.id);
 
   if (!getProp_(P.MODE)) setProp_(P.MODE, 'test');
 
   Logger.log('Report Sheet: ' + ss.getUrl());
   Logger.log('Form (edit):  ' + form.getEditUrl());
   Logger.log('Form (share): ' + form.getPublishedUrl());
-  Logger.log('Requests folder: ' + folder.getUrl());
+  Logger.log('Requests folder: ' + folder.url);
   Logger.log('Mode: ' + currentMode_());
 }
 

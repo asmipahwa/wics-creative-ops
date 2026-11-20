@@ -50,7 +50,7 @@ function processSubmission(raw, responseId, source) {
       ownerName: route.ownerName,
       ownerEmail: route.ownerEmail,
       requestedDate: today,
-      folderUrl: folder.getUrl(),
+      folderUrl: folder.url,
       missing: missing,
       source: source,
       responseId: responseId,
@@ -73,7 +73,7 @@ function processSubmission(raw, responseId, source) {
     appendIntakeLog_([
       new Date(), responseId, task.gid, task.url, name, req.type, req.event, req.requestorName,
       req.requestorEmail, task.assigneeName, req.neededBy, priority, sectionName,
-      timing.rush ? 'Yes' : 'No', missing.join(' | '), source, folder.getUrl(),
+      timing.rush ? 'Yes' : 'No', missing.join(' | '), source, folder.url,
     ]);
 
     // 6. Tell the requestor. A failed email shouldn't undo a created ticket, so it's caught separately.
