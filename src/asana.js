@@ -98,6 +98,7 @@ function asanaSetupProject_(mode) {
     if (untitled) {
       untitled.used = true;
       asanaFetch_('put', '/sections/' + untitled.gid, { name: name });
+      delete byName[untitled.name]; // it's been renamed; don't keep the old name around
       byName[name] = untitled.gid;
     } else {
       byName[name] = asanaFetch_('post', '/projects/' + projectGid + '/sections', { name: name }).gid;
