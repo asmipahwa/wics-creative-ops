@@ -240,6 +240,71 @@ function isCreativeFile(mimeType, name) {
   return /\.(psd|ai|indd|fig|sketch|xd|afdesign|afphoto|canva|svg|heic|raw|cr2|nef|mov|mp4|m4v|gif|pptx?|key)$/i.test(String(name || ''));
 }
 
+/** "https://drive.google.com/drive/folders/ABC?usp=x" → "ABC" (or the input if it is already an ID). */
+function folderIdFromLink(link) {
+  var t = String(link || '').trim();
+  var m = t.match(/folders\/([A-Za-z0-9_-]+)/) || t.match(/[?&]id=([A-Za-z0-9_-]+)/);
+  return m ? m[1] : t;
+}
+
+function isVideo(mimeType, name) {
+  return String(mimeType || '').indexOf('video/') === 0 || /\.(mov|mp4|m4v|avi|mkv|webm)$/i.test(String(name || ''));
+}
+
+/** Should this file be left out of the sandbox copy? Returns a reason, or '' to copy it. */
+function copySkipReason(file, settings) {
+  var st = settings || {};
+  if (st.skipVideos && isVideo(file.mimeType, file.name)) return 'video (skip videos is on)';
+  var maxMb = Number(st.maxFileMb) || 0;
+  if (maxMb > 0 && Number(file.size || 0) > maxMb * 1048576) return 'larger than ' + maxMb + ' MB';
+  return '';
+}
+
+/**
+ * Estimate what the copy will contain, from Survey rows:
+ * level-1 folders marked Yes, minus level-2 folders marked No inside them,
+ * minus videos if "skip videos" is on.
+ * rows: [{level, link, parentLink, files, creative, videoFiles, gb, videoGb, copy}]
+ */
+function estimateCopy(rows, settings) {
+  var yes = function (r) {
+    return !/^n/i.test(String(r.copy || 'Yes'));
+  };
+  var included = {};
+  var est = { gb: 0, creative: 0, files: 0, videoGb: 0, videoFiles: 0 };
+  var add = function (r, sign) {
+    est.gb += sign * (Number(r.gb) || 0);
+    est.creative += sign * (Number(r.creative) || 0);
+    est.files += sign * (Number(r.files) || 0);
+    est.videoGb += sign * (Number(r.videoGb) || 0);
+    est.videoFiles += sign * (Number(r.videoFiles) || 0);
+  };
+  rows
+    .filter(function (r) {
+      return Number(r.level) === 1;
+    })
+    .forEach(function (r) {
+      if (yes(r)) {
+        included[r.link] = true;
+        add(r, 1);
+      }
+    });
+  rows
+    .filter(function (r) {
+      return Number(r.level) === 2;
+    })
+    .forEach(function (r) {
+      if (included[r.parentLink] && !yes(r)) add(r, -1);
+    });
+  if (settings && settings.skipVideos) {
+    est.gb -= est.videoGb;
+    est.creative -= est.videoFiles;
+    est.files -= est.videoFiles;
+  }
+  est.gb = Math.round(est.gb * 100) / 100;
+  return est;
+}
+
 if (typeof module !== 'undefined') {
   // In Node (Jest), make logic.js helpers global, as they are in Apps Script. No `var` here on purpose:
   // redeclaring them would be confusing in Apps Script's shared global scope.
@@ -255,5 +320,9 @@ if (typeof module !== 'undefined') {
     proposeLocation: proposeLocation,
     dedupeNames: dedupeNames,
     isCreativeFile: isCreativeFile,
+    folderIdFromLink: folderIdFromLink,
+    isVideo: isVideo,
+    copySkipReason: copySkipReason,
+    estimateCopy: estimateCopy,
   };
 }

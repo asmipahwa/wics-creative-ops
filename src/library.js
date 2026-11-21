@@ -246,81 +246,207 @@ function surveyOriginal() {
   logRun_('surveyOriginal', 'ok', '', msg);
 }
 
+var SURVEY_HEADERS = [
+  'Level',
+  'Subfolder',
+  'Link',
+  'Parent link',
+  'Files',
+  'Creative files',
+  'Video files',
+  'GB',
+  'Video GB',
+  'Newest file',
+  'Copy?',
+];
+var SURVEY_BIG_GB = 1; // folders bigger than this also get a row per subfolder
+
 /**
- * READ-ONLY breakdown of the source folder, one row per subfolder (e.g. per event),
- * written to a `Survey` tab: files, creative files, GB, newest file date. Changes nothing
- * in Drive. Use it to choose which subfolders to copy so the sandbox fits in your storage.
+ * READ-ONLY breakdown of the source folder → `Survey` tab. One row per subfolder
+ * (level 1), plus one row per sub-subfolder (level 2) for any folder over 1 GB.
+ * Changes nothing in Drive. The Copy? column (and the settings in M1:N2) decide what
+ * copyToSandbox copies, so the sandbox fits in your storage. Your Copy? choices are kept on re-run.
  */
 function surveyByFolder() {
   var started = Date.now();
   var rootId = sourceFolderId_();
-  var top = listChildren_(rootId);
-  var rows = [];
-  var looseFiles = top.filter(function (f) {
-    return f.mimeType !== FOLDER_MIME_TYPE;
+  var sh = surveyTab_();
+  var previous = {};
+  readSurveyRows_().forEach(function (r) {
+    previous[r.link] = r.copy;
   });
-  var sub = top.filter(function (f) {
+  var link = function (id) {
+    return 'https://drive.google.com/drive/folders/' + id;
+  };
+  var blank = function () {
+    return { files: 0, creative: 0, videoFiles: 0, bytes: 0, videoBytes: 0, newest: '' };
+  };
+  var count = function (t, f) {
+    t.files++;
+    t.bytes += Number(f.size || 0);
+    if (isCreativeFile(f.mimeType, f.name)) t.creative++;
+    if (isVideo(f.mimeType, f.name)) {
+      t.videoFiles++;
+      t.videoBytes += Number(f.size || 0);
+    }
+    if (f.modifiedTime > t.newest) t.newest = f.modifiedTime;
+  };
+  var row = function (level, name, id, parentId, t) {
+    var l = id ? link(id) : '';
+    return [
+      level,
+      name,
+      l,
+      parentId ? link(parentId) : '',
+      t.files,
+      t.creative,
+      t.videoFiles,
+      Math.round((t.bytes / 1073741824) * 100) / 100,
+      Math.round((t.videoBytes / 1073741824) * 100) / 100,
+      t.newest ? t.newest.slice(0, 10) : '',
+      previous[l] || 'Yes',
+    ];
+  };
+
+  var rows = [];
+  var top = listChildren_(rootId);
+  var loose = blank();
+  top
+    .filter(function (f) {
+      return f.mimeType !== FOLDER_MIME_TYPE;
+    })
+    .forEach(function (f) {
+      count(loose, f);
+    });
+  if (loose.files) rows.push(row(1, '(files directly in the source folder — always copied)', '', '', loose));
+
+  var subs = top.filter(function (f) {
     return f.mimeType === FOLDER_MIME_TYPE;
   });
-  var tally = function (name, id, seedFiles) {
-    var files = 0,
-      creative = 0,
-      bytes = 0,
-      newest = '';
-    var count = function (f) {
-      files++;
-      bytes += Number(f.size || 0);
-      if (isCreativeFile(f.mimeType, f.name)) creative++;
-      if (f.modifiedTime > newest) newest = f.modifiedTime;
-    };
-    (seedFiles || []).forEach(count);
-    var queue = id ? [id] : [];
-    while (queue.length) {
-      listChildren_(queue.shift()).forEach(function (f) {
-        if (f.mimeType === FOLDER_MIME_TYPE) queue.push(f.id);
-        else count(f);
-      });
-    }
-    rows.push([
-      name,
-      id ? 'https://drive.google.com/drive/folders/' + id : '',
-      files,
-      creative,
-      Math.round((bytes / 1073741824) * 100) / 100,
-      newest ? newest.slice(0, 10) : '',
-    ]);
-  };
-  if (looseFiles.length) tally('(files directly in this folder)', '', looseFiles);
-  for (var i = 0; i < sub.length; i++) {
+  for (var i = 0; i < subs.length; i++) {
     if (Date.now() - started > LIB_TIME_BUDGET_MS) {
-      rows.push(['(stopped: time limit — ' + (sub.length - i) + ' folders not counted)', '', '', '', '', '']);
+      rows.push(['', '(stopped: time limit — ' + (subs.length - i) + ' folders not counted)', '', '', '', '', '', '', '', '', '']);
       break;
     }
-    tally(sub[i].name, sub[i].id);
+    var l1 = subs[i];
+    var total = blank();
+    var perChild = {};
+    var direct = blank();
+    var children = listChildren_(l1.id);
+    var queue = [];
+    children.forEach(function (c) {
+      if (c.mimeType === FOLDER_MIME_TYPE) {
+        perChild[c.id] = { name: c.name, t: blank() };
+        queue.push({ id: c.id, l2: c.id });
+      } else {
+        count(total, c);
+        count(direct, c);
+      }
+    });
+    while (queue.length) {
+      var q = queue.shift();
+      listChildren_(q.id).forEach(function (f) {
+        if (f.mimeType === FOLDER_MIME_TYPE) queue.push({ id: f.id, l2: q.l2 });
+        else {
+          count(total, f);
+          count(perChild[q.l2].t, f);
+        }
+      });
+    }
+    rows.push(row(1, l1.name, l1.id, '', total));
+    if (total.bytes > SURVEY_BIG_GB * 1073741824) {
+      if (direct.files) rows.push(row(2, '    ' + l1.name + ' / (loose files — copied with the folder)', '', l1.id, direct));
+      Object.keys(perChild).forEach(function (id) {
+        rows.push(row(2, '    ' + l1.name + ' / ' + perChild[id].name, id, l1.id, perChild[id].t));
+      });
+    }
   }
-  rows.sort(function (a, b) {
-    return String(b[5]).localeCompare(String(a[5]));
-  });
-  var sh = getOrCreateTab_(reportSpreadsheet_(), 'Survey', ['Subfolder', 'Link', 'Files', 'Creative files', 'GB', 'Newest file']);
-  if (sh.getMaxRows() > 1) sh.getRange(2, 1, sh.getMaxRows() - 1, 6).clearContent();
-  if (rows.length) sh.getRange(2, 1, rows.length, 6).setValues(rows);
-  var totals = rows.reduce(
-    function (t, r) {
-      return [t[0] + (Number(r[2]) || 0), t[1] + (Number(r[3]) || 0), t[2] + (Number(r[4]) || 0)];
-    },
-    [0, 0, 0],
-  );
-  var msg =
-    sub.length +
-    ' subfolders: ' +
-    totals[0] +
-    ' files, ' +
-    totals[1] +
-    ' creative, ' +
-    totals[2].toFixed(2) +
-    ' GB. Details in the Survey tab (newest first).';
+
+  if (sh.getMaxRows() > 1) sh.getRange(2, 1, sh.getMaxRows() - 1, SURVEY_HEADERS.length).clearContent();
+  if (rows.length) {
+    sh.getRange(2, 1, rows.length, SURVEY_HEADERS.length).setValues(rows);
+    sh.getRange(2, 11, rows.length, 1).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(['Yes', 'No']).build());
+  }
+  var msg = subs.length + ' subfolders surveyed (read-only). Set Copy? = No for anything to leave out, then run estimateCopy.';
   logRun_('surveyByFolder', 'ok', '', msg);
   Logger.log(msg);
+  estimateCopy_();
+}
+
+/** The Survey tab, with its two copy settings in M1:N2. */
+function surveyTab_() {
+  var sh = getOrCreateTab_(reportSpreadsheet_(), 'Survey', SURVEY_HEADERS);
+  if (sh.getRange(1, 1).getValue() !== 'Level') {
+    sh.clear();
+    sh.getRange(1, 1, 1, SURVEY_HEADERS.length).setValues([SURVEY_HEADERS]).setFontWeight('bold');
+    sh.setFrozenRows(1);
+  }
+  if (!sh.getRange('M1').getValue()) {
+    sh.getRange('M1:N2').setValues([
+      ['Skip videos when copying? ✏️', 'No'],
+      ['Skip files larger than (MB, blank = no limit) ✏️', ''],
+    ]);
+    sh.getRange('N1:N2').setBackground('#fff2cc');
+    sh.getRange('N1').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(['Yes', 'No']).build());
+    sh.getRange('M4:M7').setValues([
+      ['Estimated copy size (GB)'],
+      ['Estimated files'],
+      ['Estimated creative files'],
+      ['(run estimateCopy after changing Copy? or the settings)'],
+    ]);
+  }
+  return sh;
+}
+
+function readSurveyRows_() {
+  var sh = reportSpreadsheet_().getSheetByName('Survey');
+  if (!sh || sh.getLastRow() < 2 || sh.getRange(1, 1).getValue() !== 'Level') return [];
+  return sh
+    .getRange(2, 1, sh.getLastRow() - 1, SURVEY_HEADERS.length)
+    .getValues()
+    .filter(function (r) {
+      return r[0] !== '';
+    })
+    .map(function (r) {
+      return {
+        level: r[0],
+        name: r[1],
+        link: r[2],
+        parentLink: r[3],
+        files: r[4],
+        creative: r[5],
+        videoFiles: r[6],
+        gb: r[7],
+        videoGb: r[8],
+        copy: r[10],
+      };
+    });
+}
+
+function copySettings_() {
+  var sh = reportSpreadsheet_().getSheetByName('Survey');
+  if (!sh) return { skipVideos: false, maxFileMb: 0 };
+  return { skipVideos: /^y/i.test(String(sh.getRange('N1').getValue())), maxFileMb: Number(sh.getRange('N2').getValue()) || 0 };
+}
+
+/** Folder IDs marked Copy? = No in the Survey tab. */
+function excludedFolderIds_() {
+  var ids = {};
+  readSurveyRows_().forEach(function (r) {
+    if (/^n/i.test(String(r.copy)) && r.link) ids[folderIdFromLink(r.link)] = true;
+  });
+  return ids;
+}
+
+/** Recalculate the estimate in the Survey tab (no Drive calls at all). */
+function estimateCopy() {
+  estimateCopy_();
+}
+function estimateCopy_() {
+  var est = estimateCopy(readSurveyRows_(), copySettings_());
+  var sh = surveyTab_();
+  sh.getRange('N4:N6').setValues([[est.gb], [est.files], [est.creative]]);
+  Logger.log('Estimated copy: ' + est.gb + ' GB, ' + est.files + ' files, ' + est.creative + ' creative.');
 }
 
 /**
@@ -353,6 +479,8 @@ function copyToSandbox() {
     if (r[2] === 'folder' && r[9] === 'pending') pending.push({ row: i + 2, origId: r[0], copyId: r[1], path: r[3] });
   });
 
+  var excluded = excludedFolderIds_();
+  var settings = copySettings_();
   var copied = 0;
   while (pending.length) {
     var folder = pending[0];
@@ -368,7 +496,11 @@ function copyToSandbox() {
       var path = folder.path + '/' + c.name;
       var base = [c.id, '', '', path, c.name, c.mimeType, c.size || '', c.createdTime, c.modifiedTime];
       try {
-        if (c.mimeType === FOLDER_MIME_TYPE) {
+        var skipWhy = c.mimeType === FOLDER_MIME_TYPE ? (excluded[c.id] ? 'Copy? = No in Survey tab' : '') : copySkipReason(c, settings);
+        if (skipWhy) {
+          base[2] = c.mimeType === FOLDER_MIME_TYPE ? 'folder' : 'file';
+          sh.appendRow(base.concat(['skipped', skipWhy]));
+        } else if (c.mimeType === FOLDER_MIME_TYPE) {
           var nf = createFolder_(c.name, folder.copyId);
           base[1] = nf.id;
           base[2] = 'folder';

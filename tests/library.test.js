@@ -169,3 +169,30 @@ describe('isCreativeFile', () => {
     expect(L.isCreativeFile('application/vnd.google-apps.shortcut', 'x')).toBe(false);
   });
 });
+
+describe('copy selection', () => {
+  test('folderIdFromLink', () => {
+    expect(L.folderIdFromLink('https://drive.google.com/drive/folders/1Y_x0?usp=drive_link')).toBe('1Y_x0');
+    expect(L.folderIdFromLink('abc123')).toBe('abc123');
+  });
+  test('copySkipReason: videos and size limit', () => {
+    expect(L.copySkipReason({ mimeType: 'video/mp4', name: 'a.mp4', size: 10 }, { skipVideos: true })).toMatch(/video/);
+    expect(L.copySkipReason({ mimeType: 'video/mp4', name: 'a.mp4', size: 10 }, { skipVideos: false })).toBe('');
+    expect(L.copySkipReason({ mimeType: 'image/png', name: 'a.png', size: 60 * 1048576 }, { maxFileMb: 50 })).toMatch(/50 MB/);
+    expect(L.copySkipReason({ mimeType: 'image/png', name: 'a.png', size: 1000 }, { maxFileMb: 50 })).toBe('');
+  });
+  const rows = [
+    { level: 1, link: 'A', gb: 17, creative: 2000, files: 2400, videoGb: 10, videoFiles: 50, copy: 'Yes' },
+    { level: 2, link: 'A1', parentLink: 'A', gb: 12, creative: 900, files: 1000, videoGb: 9, videoFiles: 40, copy: 'No' },
+    { level: 2, link: 'A2', parentLink: 'A', gb: 5, creative: 1100, files: 1400, videoGb: 1, videoFiles: 10, copy: 'Yes' },
+    { level: 1, link: 'B', gb: 7, creative: 900, files: 1400, videoGb: 2, videoFiles: 5, copy: 'No' },
+    { level: 2, link: 'B1', parentLink: 'B', gb: 7, creative: 900, files: 1400, videoGb: 2, videoFiles: 5, copy: 'No' },
+    { level: 1, link: 'C', gb: 1, creative: 100, files: 120, videoGb: 0, videoFiles: 0, copy: 'Yes' },
+  ];
+  test('estimateCopy: excluded subfolders subtracted once; excluded parents ignored', () => {
+    expect(L.estimateCopy(rows, {})).toMatchObject({ gb: 6, creative: 1200, files: 1520 });
+  });
+  test('estimateCopy: skip videos removes remaining video size', () => {
+    expect(L.estimateCopy(rows, { skipVideos: true })).toMatchObject({ gb: 5, creative: 1190 });
+  });
+});
