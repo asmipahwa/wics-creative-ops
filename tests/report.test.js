@@ -40,7 +40,7 @@ describe('validateBackfillRow', () => {
     const errs = L.validateBackfillRow({ status: 'meh', type: 'Hologram' }, TYPES).join(' | ');
     expect(errs).toMatch(/requested_date/);
     expect(errs).toMatch(/Hologram/);
-    expect(errs).toMatch(/owner missing/);
+    expect(errs).not.toMatch(/owner/); // blank owner → Default owner
     expect(errs).toMatch(/status "meh"/);
   });
   test('accepts real Date objects from the Sheet', () => {

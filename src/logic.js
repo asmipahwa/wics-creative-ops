@@ -280,7 +280,7 @@ function validateBackfillRow(row, validTypes) {
     errors.push('type "' + clean(row.type) + '" not one of the request types');
   if (!clean(row.event)) errors.push('event missing (use "General")');
   if (!clean(row.description)) errors.push('description missing');
-  if (!clean(row.owner)) errors.push('owner missing');
+  // Blank owner is allowed: it goes to the Routing tab's Default owner, like form requests do.
   if (!normalizeStatus(row.status)) errors.push('status "' + clean(row.status) + '" not recognised');
   if (clean(row.delivered_date) && !toIsoDate(row.delivered_date)) errors.push('delivered_date invalid');
   if (normalizeStatus(row.status) === 'Delivered' && !toIsoDate(row.delivered_date))
