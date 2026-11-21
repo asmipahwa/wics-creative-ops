@@ -443,8 +443,29 @@ function estimateCopy() {
   estimateCopy_();
 }
 function estimateCopy_() {
-  var est = estimateCopy(readSurveyRows_(), copySettings_());
+  var rows = readSurveyRows_();
+  var est = estimateCopy(rows, copySettings_());
   var sh = surveyTab_();
+  if (sh.getLastRow() > 1) {
+    var n = sh.getLastRow() - 1;
+    sh.getRange(2, 5, n, 3).setNumberFormat('0'); // Files, Creative, Video files
+    sh.getRange(2, 8, n, 2).setNumberFormat('0.00'); // GB, Video GB
+    sh.getRange(2, 10, n, 1).setNumberFormat('@'); // Newest file (text date)
+  }
+  rows.forEach(function (r) {
+    Logger.log(
+      [
+        r.level,
+        r.name,
+        r.files + ' files',
+        r.creative + ' creative',
+        r.videoFiles + ' videos',
+        r.gb + ' GB',
+        r.videoGb + ' GB video',
+        'Copy? ' + r.copy,
+      ].join(' | '),
+    );
+  });
   sh.getRange('N4:N6').setValues([[est.gb], [est.files], [est.creative]]);
   Logger.log('Estimated copy: ' + est.gb + ' GB, ' + est.files + ' files, ' + est.creative + ' creative.');
 }
