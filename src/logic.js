@@ -20,10 +20,7 @@ function clean(value) {
 function toList(value) {
   if (!value) return [];
   if (Array.isArray(value)) return value.map(clean).filter(Boolean);
-  return String(value)
-    .split(',')
-    .map(clean)
-    .filter(Boolean);
+  return String(value).split(',').map(clean).filter(Boolean);
 }
 
 /** Accept 'YYYY-MM-DD', 'M/D/YYYY' or a Date; return 'YYYY-MM-DD' or ''. */
@@ -31,9 +28,7 @@ function toIsoDate(value) {
   if (!value) return '';
   if (Object.prototype.toString.call(value) === '[object Date]') {
     if (isNaN(value.getTime())) return '';
-    return (
-      value.getFullYear() + '-' + pad2(value.getMonth() + 1) + '-' + pad2(value.getDate())
-    );
+    return value.getFullYear() + '-' + pad2(value.getMonth() + 1) + '-' + pad2(value.getDate());
   }
   var s = clean(value);
   var iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
@@ -122,9 +117,7 @@ function checkCompleteness(req, route, minWords) {
   var missing = [];
   var min = minWords || 15;
   if (wordCount(req.description) < min) {
-    missing.push(
-      'A fuller description of what you need (at least ' + min + ' words: what it is, who it is for, key details)'
-    );
+    missing.push('A fuller description of what you need (at least ' + min + ' words: what it is, who it is for, key details)');
   }
   if (isPlaceholder(req.copy)) {
     missing.push('The key copy / text that should appear on the asset');
@@ -187,7 +180,7 @@ function buildTaskNotes(req, ctx) {
     'Asset link: ' + (ctx.assetLink || ''),
     'Working folder: ' + (ctx.folderUrl || '—'),
     '',
-    '— What\'s needed —',
+    "— What's needed —",
     req.description || '—',
     '',
     '— Key copy —',
@@ -221,7 +214,10 @@ function slugPart(text) {
 
 /** Working-folder name following the naming convention: YYYY-MM-DD_Event_Type_ID. */
 function requestFolderName(req, responseId) {
-  var shortId = clean(responseId).replace(/[^A-Za-z0-9]/g, '').slice(-6) || 'NOID';
+  var shortId =
+    clean(responseId)
+      .replace(/[^A-Za-z0-9]/g, '')
+      .slice(-6) || 'NOID';
   return [req.neededBy || 'NoDate', slugPart(req.event) || 'General', slugPart(req.type) || 'Other', shortId].join('_');
 }
 
@@ -246,9 +242,24 @@ var DONE_SECTIONS = ['Delivered', 'Archived'];
 function normalizeStatus(status) {
   var s = clean(status).toLowerCase().replace(/\s+/g, ' ');
   if (!s) return '';
-  var aliases = { done: 'Delivered', posted: 'Delivered', published: 'Delivered', complete: 'Delivered', completed: 'Delivered',
-    wip: 'In Progress', 'in-progress': 'In Progress', review: 'In Review', approved: 'Approved / Scheduled', scheduled: 'Approved / Scheduled',
-    'needs info': 'Needs Info', new: 'Intake', todo: 'Intake', 'to do': 'Intake', cancelled: 'Archived', canceled: 'Archived' };
+  var aliases = {
+    done: 'Delivered',
+    posted: 'Delivered',
+    published: 'Delivered',
+    complete: 'Delivered',
+    completed: 'Delivered',
+    wip: 'In Progress',
+    'in-progress': 'In Progress',
+    review: 'In Review',
+    approved: 'Approved / Scheduled',
+    scheduled: 'Approved / Scheduled',
+    'needs info': 'Needs Info',
+    new: 'Intake',
+    todo: 'Intake',
+    'to do': 'Intake',
+    cancelled: 'Archived',
+    canceled: 'Archived',
+  };
   if (aliases[s]) return aliases[s];
   for (var i = 0; i < PIPELINE_SECTIONS.length; i++) {
     if (PIPELINE_SECTIONS[i].toLowerCase() === s) return PIPELINE_SECTIONS[i];
@@ -265,13 +276,15 @@ function validateBackfillRow(row, validTypes) {
   var errors = [];
   if (!toIsoDate(row.requested_date)) errors.push('requested_date missing/invalid');
   if (!clean(row.type)) errors.push('type missing');
-  else if (validTypes && validTypes.indexOf(clean(row.type)) === -1) errors.push('type "' + clean(row.type) + '" not one of the request types');
+  else if (validTypes && validTypes.indexOf(clean(row.type)) === -1)
+    errors.push('type "' + clean(row.type) + '" not one of the request types');
   if (!clean(row.event)) errors.push('event missing (use "General")');
   if (!clean(row.description)) errors.push('description missing');
   if (!clean(row.owner)) errors.push('owner missing');
   if (!normalizeStatus(row.status)) errors.push('status "' + clean(row.status) + '" not recognised');
   if (clean(row.delivered_date) && !toIsoDate(row.delivered_date)) errors.push('delivered_date invalid');
-  if (normalizeStatus(row.status) === 'Delivered' && !toIsoDate(row.delivered_date)) errors.push('status is Delivered but delivered_date is empty');
+  if (normalizeStatus(row.status) === 'Delivered' && !toIsoDate(row.delivered_date))
+    errors.push('status is Delivered but delivered_date is empty');
   if (clean(row.due_date) && !toIsoDate(row.due_date)) errors.push('due_date invalid');
   return errors;
 }
@@ -307,6 +320,7 @@ function parseTaskNotes(notes) {
       if (!(key in out)) out[key] = m[2].trim();
     });
   var requestor = (out['requestor'] || '').replace(/\s*<[^>]*>\s*$/, '');
+  var emailMatch = (out['requestor'] || '').match(/<([^>]+@[^>]+)>/);
   return {
     requestor: requestor,
     type: out['request type'] || '',
@@ -318,7 +332,23 @@ function parseTaskNotes(notes) {
     deliveredDate: toIsoDate(out['delivered date']),
     assetLink: out['asset link'] || '',
     source: out['source'] || '',
+    requestorEmail: emailMatch ? emailMatch[1] : '',
+    idleCheckSent: toIsoDate(out['idle check sent']),
   };
+}
+
+/**
+ * Spec: tickets idle 14+ days → "still needed?" email; no reply 7 days after → flag for archive.
+ * "Idle" = Asana says nothing changed on the task. Returns 'ask', 'flag' or ''.
+ */
+function idleAction(ticketOpen, modifiedIso, idleCheckSentIso, todayIso) {
+  if (!ticketOpen || !modifiedIso) return '';
+  if (idleCheckSentIso) {
+    // Our own stamp changes modified_at by a day at most; anything later means someone replied/acted.
+    var touchedSince = daysBetween(idleCheckSentIso, modifiedIso) > 1;
+    return !touchedSince && daysBetween(idleCheckSentIso, todayIso) >= 7 ? 'flag' : '';
+  }
+  return daysBetween(modifiedIso, todayIso) >= 14 ? 'ask' : '';
 }
 
 /** Replace (or append) one "Label: value" line in a description, leaving everything else untouched. */
@@ -369,7 +399,9 @@ function ticketFromTask(task, projectGid, todayIso) {
 
 function median(nums) {
   if (!nums.length) return null;
-  var s = nums.slice().sort(function (a, b) { return a - b; });
+  var s = nums.slice().sort(function (a, b) {
+    return a - b;
+  });
   var mid = Math.floor(s.length / 2);
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 }
@@ -379,9 +411,15 @@ function median(nums) {
  * Mirrors the Dashboard formulas so the email and the Sheet always agree.
  */
 function summarizeTickets(tickets, todayIso, spikeThreshold) {
-  var open = tickets.filter(function (t) { return t.open; });
-  var delivered = tickets.filter(function (t) { return t.delivered; });
-  var dueIn = function (t) { return t.due ? daysBetween(todayIso, t.due) : null; };
+  var open = tickets.filter(function (t) {
+    return t.open;
+  });
+  var delivered = tickets.filter(function (t) {
+    return t.delivered;
+  });
+  var dueIn = function (t) {
+    return t.due ? daysBetween(todayIso, t.due) : null;
+  };
 
   var byOwner = {};
   var byOwnerDay = {};
@@ -393,36 +431,78 @@ function summarizeTickets(tickets, todayIso, spikeThreshold) {
     }
   });
   var spikes = Object.keys(byOwner)
-    .filter(function (o) { return byOwner[o] > spikeThreshold; })
-    .map(function (o) { return { owner: o, open: byOwner[o] }; })
-    .sort(function (a, b) { return b.open - a.open; });
+    .filter(function (o) {
+      return byOwner[o] > spikeThreshold;
+    })
+    .map(function (o) {
+      return { owner: o, open: byOwner[o] };
+    })
+    .sort(function (a, b) {
+      return b.open - a.open;
+    });
   var conflicts = Object.keys(byOwnerDay)
-    .filter(function (k) { return byOwnerDay[k].length >= 2; })
-    .map(function (k) { var p = k.split('|'); return { owner: p[0], due: p[1], tasks: byOwnerDay[k] }; })
-    .sort(function (a, b) { return a.due < b.due ? -1 : 1; });
+    .filter(function (k) {
+      return byOwnerDay[k].length >= 2;
+    })
+    .map(function (k) {
+      var p = k.split('|');
+      return { owner: p[0], due: p[1], tasks: byOwnerDay[k] };
+    })
+    .sort(function (a, b) {
+      return a.due < b.due ? -1 : 1;
+    });
 
-  var cycle = delivered.filter(function (t) { return t.requested; }).map(function (t) { return daysBetween(t.requested, t.delivered); });
-  var withDue = delivered.filter(function (t) { return t.due; });
-  var onTime = withDue.filter(function (t) { return t.delivered <= t.due; }).length;
+  var cycle = delivered
+    .filter(function (t) {
+      return t.requested;
+    })
+    .map(function (t) {
+      return daysBetween(t.requested, t.delivered);
+    });
+  var withDue = delivered.filter(function (t) {
+    return t.due;
+  });
+  var onTime = withDue.filter(function (t) {
+    return t.delivered <= t.due;
+  }).length;
   var monday = (function () {
     var p = todayIso.split('-').map(Number);
     var d = new Date(Date.UTC(p[0], p[1] - 1, p[2]));
     var back = (d.getUTCDay() + 6) % 7;
     return daysBetween('1970-01-01', todayIso) - back;
   })();
-  var inThisWeek = function (iso) { var n = daysBetween('1970-01-01', iso); return n >= monday && n < monday + 7; };
+  var inThisWeek = function (iso) {
+    var n = daysBetween('1970-01-01', iso);
+    return n >= monday && n < monday + 7;
+  };
 
   return {
     total: tickets.length,
-    fromForm: tickets.filter(function (t) { return t.source === 'form'; }).length,
-    fromBackfill: tickets.filter(function (t) { return t.source === 'backfill'; }).length,
+    fromForm: tickets.filter(function (t) {
+      return t.source === 'form';
+    }).length,
+    fromBackfill: tickets.filter(function (t) {
+      return t.source === 'backfill';
+    }).length,
     open: open.length,
     delivered: delivered.length,
-    overdue: open.filter(function (t) { var d = dueIn(t); return d !== null && d < 0; }),
-    due48h: open.filter(function (t) { var d = dueIn(t); return d !== null && d >= 0 && d <= 2; }),
-    dueThisWeek: open.filter(function (t) { return t.due && inThisWeek(t.due); }),
-    createdThisWeek: tickets.filter(function (t) { return t.requested && inThisWeek(t.requested); }).length,
-    deliveredThisWeek: delivered.filter(function (t) { return inThisWeek(t.delivered); }).length,
+    overdue: open.filter(function (t) {
+      var d = dueIn(t);
+      return d !== null && d < 0;
+    }),
+    due48h: open.filter(function (t) {
+      var d = dueIn(t);
+      return d !== null && d >= 0 && d <= 2;
+    }),
+    dueThisWeek: open.filter(function (t) {
+      return t.due && inThisWeek(t.due);
+    }),
+    createdThisWeek: tickets.filter(function (t) {
+      return t.requested && inThisWeek(t.requested);
+    }).length,
+    deliveredThisWeek: delivered.filter(function (t) {
+      return inThisWeek(t.delivered);
+    }).length,
     byOwner: byOwner,
     spikes: spikes,
     conflicts: conflicts,
@@ -441,6 +521,7 @@ if (typeof module !== 'undefined') {
     clean: clean,
     toList: toList,
     toIsoDate: toIsoDate,
+    pad2: pad2,
     daysBetween: daysBetween,
     wordCount: wordCount,
     isPlaceholder: isPlaceholder,
@@ -465,5 +546,6 @@ if (typeof module !== 'undefined') {
     median: median,
     summarizeTickets: summarizeTickets,
     shouldArchive: shouldArchive,
+    idleAction: idleAction,
   };
 }

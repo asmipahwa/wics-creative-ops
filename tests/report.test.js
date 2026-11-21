@@ -21,8 +21,16 @@ describe('normalizeStatus', () => {
 
 describe('validateBackfillRow', () => {
   const good = {
-    requested_date: '2026-09-01', requestor: 'Sam', type: 'Reel', event: 'TryCATCH', description: 'Recap reel',
-    owner: 'Ari', due_date: '2026-09-10', delivered_date: '2026-09-09', status: 'Delivered', asset_link: '',
+    requested_date: '2026-09-01',
+    requestor: 'Sam',
+    type: 'Reel',
+    event: 'TryCATCH',
+    description: 'Recap reel',
+    owner: 'Ari',
+    due_date: '2026-09-10',
+    delivered_date: '2026-09-09',
+    status: 'Delivered',
+    asset_link: '',
   };
   test('valid row', () => expect(L.validateBackfillRow(good, TYPES)).toEqual([]));
   test('Delivered needs a delivered date (no guessing)', () => {
@@ -62,16 +70,38 @@ describe('resolveOwnerEmail', () => {
 
 describe('notes round-trip', () => {
   const req = L.normalizeRequest({
-    requestorName: 'Sam', requestorEmail: 'sam@example.com', type: 'Reel', event: 'TryCATCH 2026',
-    description: 'Recap: highlights from the day', neededBy: '2026-12-01', copy: 'Thanks!', references: 'none',
+    requestorName: 'Sam',
+    requestorEmail: 'sam@example.com',
+    type: 'Reel',
+    event: 'TryCATCH 2026',
+    description: 'Recap: highlights from the day',
+    neededBy: '2026-12-01',
+    copy: 'Thanks!',
+    references: 'none',
   });
   const notes = L.buildTaskNotes(req, {
-    priority: 'P2', rush: true, daysUntilDue: 3, leadDays: 7, requestedDate: '2026-11-19', source: 'form', responseId: 'r1',
+    priority: 'P2',
+    rush: true,
+    daysUntilDue: 3,
+    leadDays: 7,
+    requestedDate: '2026-11-19',
+    source: 'form',
+    responseId: 'r1',
   });
   test('parseTaskNotes reads back what buildTaskNotes wrote', () => {
     expect(L.parseTaskNotes(notes)).toEqual({
-      requestor: 'Sam', type: 'Reel', event: 'TryCATCH 2026', neededBy: '2026-12-01', priority: 'P2', rush: true,
-      requestedDate: '2026-11-19', deliveredDate: '', assetLink: '', source: 'form',
+      requestor: 'Sam',
+      type: 'Reel',
+      event: 'TryCATCH 2026',
+      neededBy: '2026-12-01',
+      priority: 'P2',
+      rush: true,
+      requestedDate: '2026-11-19',
+      deliveredDate: '',
+      assetLink: '',
+      source: 'form',
+      requestorEmail: 'sam@example.com',
+      idleCheckSent: '',
     });
   });
   test('a "Label:" inside the description does not override header fields', () => {
@@ -90,18 +120,35 @@ describe('notes round-trip', () => {
 describe('ticketFromTask', () => {
   const P = 'proj1';
   const base = {
-    gid: 42, name: 'Reel – X', created_at: '2026-11-01T18:00:00Z', due_on: '2026-11-20', assignee: { name: 'Ari' },
-    memberships: [{ project: { gid: 'other' }, section: { name: 'Nope' } }, { project: { gid: P }, section: { name: 'In Progress' } }],
+    gid: 42,
+    name: 'Reel – X',
+    created_at: '2026-11-01T18:00:00Z',
+    due_on: '2026-11-20',
+    assignee: { name: 'Ari' },
+    memberships: [
+      { project: { gid: 'other' }, section: { name: 'Nope' } },
+      { project: { gid: P }, section: { name: 'In Progress' } },
+    ],
     notes: 'Request type: Reel\nEvent: X\nRequested date: 2026-10-30\nsource: form',
   };
   test('open task', () => {
     const t = L.ticketFromTask(base, P, '2026-11-19');
-    expect(t).toMatchObject({ id: '42', status: 'In Progress', open: true, requested: '2026-10-30', daysOpen: 20, month: '2026-10', delivered: '', needsDeliveredStamp: false });
+    expect(t).toMatchObject({
+      id: '42',
+      status: 'In Progress',
+      open: true,
+      requested: '2026-10-30',
+      daysOpen: 20,
+      month: '2026-10',
+      delivered: '',
+      needsDeliveredStamp: false,
+    });
   });
   test('moved to Delivered without a date → uses completion date and asks for a stamp', () => {
     const t = L.ticketFromTask(
       { ...base, completed: true, _completedLocal: '2026-11-18', memberships: [{ project: { gid: P }, section: { name: 'Delivered' } }] },
-      P, '2026-11-19'
+      P,
+      '2026-11-19',
     );
     expect(t).toMatchObject({ open: false, delivered: '2026-11-18', daysOpen: 19, needsDeliveredStamp: true });
   });
@@ -113,15 +160,35 @@ describe('ticketFromTask', () => {
 
 describe('summarizeTickets', () => {
   const today = '2026-11-19'; // a Thursday
-  const t = (o) => Object.assign({ name: 'T', owner: 'Ari', open: true, due: '', delivered: '', requested: '2026-11-01', source: 'form', status: 'Intake' }, o);
+  const t = (o) =>
+    Object.assign(
+      { name: 'T', owner: 'Ari', open: true, due: '', delivered: '', requested: '2026-11-01', source: 'form', status: 'Intake' },
+      o,
+    );
   const tickets = [
     t({ name: 'late', due: '2026-11-17' }),
     t({ name: 'tomorrow', due: '2026-11-20' }),
     t({ name: 'sunday a', due: '2026-11-22' }),
     t({ name: 'sunday b', due: '2026-11-22' }),
     t({ name: 'next week', due: '2026-11-25', owner: 'Bo' }),
-    t({ name: 'done on time', open: false, due: '2026-11-10', delivered: '2026-11-08', requested: '2026-11-01', source: 'backfill', status: 'Delivered' }),
-    t({ name: 'done late', open: false, due: '2026-11-10', delivered: '2026-11-12', requested: '2026-11-02', source: 'backfill', status: 'Delivered' }),
+    t({
+      name: 'done on time',
+      open: false,
+      due: '2026-11-10',
+      delivered: '2026-11-08',
+      requested: '2026-11-01',
+      source: 'backfill',
+      status: 'Delivered',
+    }),
+    t({
+      name: 'done late',
+      open: false,
+      due: '2026-11-10',
+      delivered: '2026-11-12',
+      requested: '2026-11-02',
+      source: 'backfill',
+      status: 'Delivered',
+    }),
   ];
   const s = L.summarizeTickets(tickets, today, 3);
 
@@ -151,4 +218,16 @@ describe('shouldArchive', () => {
     expect(L.shouldArchive({ status: 'Delivered', delivered: '2026-11-06' }, '2026-11-19')).toBe(false);
     expect(L.shouldArchive({ status: 'In Review', delivered: '2026-01-01' }, '2026-11-19')).toBe(false);
   });
+});
+
+describe('idleAction (still-needed check)', () => {
+  test('open and untouched 14+ days → ask', () => expect(L.idleAction(true, '2026-11-01', '', '2026-11-15')).toBe('ask'));
+  test('13 days → nothing yet', () => expect(L.idleAction(true, '2026-11-02', '', '2026-11-15')).toBe(''));
+  test('asked 7+ days ago, no activity since → flag for archive', () => {
+    expect(L.idleAction(true, '2026-11-15', '2026-11-15', '2026-11-22')).toBe('flag');
+  });
+  test('asked, then someone updated the task → no flag', () => {
+    expect(L.idleAction(true, '2026-11-18', '2026-11-15', '2026-11-22')).toBe('');
+  });
+  test('closed tickets are never chased', () => expect(L.idleAction(false, '2026-01-01', '', '2026-11-15')).toBe(''));
 });

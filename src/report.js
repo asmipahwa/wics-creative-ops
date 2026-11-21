@@ -20,9 +20,13 @@ function setupDashboard() {
   var tickets = ss.getSheetByName('Tickets');
   var dash = ss.getSheetByName('Dashboard') || ss.insertSheet('Dashboard', 0);
   dash.clear();
-  dash.getCharts().forEach(function (c) { dash.removeChart(c); });
+  dash.getCharts().forEach(function (c) {
+    dash.removeChart(c);
+  });
 
-  var head = function (a1, text) { dash.getRange(a1).setValue(text).setFontWeight('bold').setFontSize(11).setBackground('#ede7f6'); };
+  var head = function (a1, text) {
+    dash.getRange(a1).setValue(text).setFontWeight('bold').setFontSize(11).setBackground('#ede7f6');
+  };
 
   dash.getRange('A1').setValue('WiCS Marketing — Workload & Status').setFontSize(16).setFontWeight('bold');
   dash.getRange('A2').setValue('Last synced from Asana');
@@ -40,8 +44,26 @@ function setupDashboard() {
     ['Open', '=COUNTIF(' + TK + 'O2:O,TRUE)'],
     ['Overdue', '=COUNTIFS(' + TK + 'O2:O,TRUE,' + TK + 'L2:L,"<"&TODAY())'],
     ['Due in next 48 hours', '=COUNTIFS(' + TK + 'O2:O,TRUE,' + TK + 'L2:L,">="&TODAY(),' + TK + 'L2:L,"<="&TODAY()+2)'],
-    ['Median cycle time (days, requested → delivered)', '=IFERROR(MEDIAN(FILTER(' + TK + 'M2:M-' + TK + 'K2:K,' + TK + 'M2:M<>"",' + TK + 'K2:K<>"")),"—")'],
-    ['On-time delivery %', '=IFERROR(SUMPRODUCT((' + TK + 'M2:M<>"")*(' + TK + 'L2:L<>"")*(' + TK + 'M2:M<=' + TK + 'L2:L))/SUMPRODUCT((' + TK + 'M2:M<>"")*(' + TK + 'L2:L<>"")),"—")'],
+    [
+      'Median cycle time (days, requested → delivered)',
+      '=IFERROR(MEDIAN(FILTER(' + TK + 'M2:M-' + TK + 'K2:K,' + TK + 'M2:M<>"",' + TK + 'K2:K<>"")),"—")',
+    ],
+    [
+      'On-time delivery %',
+      '=IFERROR(SUMPRODUCT((' +
+        TK +
+        'M2:M<>"")*(' +
+        TK +
+        'L2:L<>"")*(' +
+        TK +
+        'M2:M<=' +
+        TK +
+        'L2:L))/SUMPRODUCT((' +
+        TK +
+        'M2:M<>"")*(' +
+        TK +
+        'L2:L<>"")),"—")',
+    ],
   ];
   dash.getRange(6, 1, kpis.length, 2).setValues(kpis);
   dash.getRange('B14').setNumberFormat('0%');
@@ -57,20 +79,57 @@ function setupDashboard() {
   head('A25', 'Status lookup — type a ticket ID or part of its name ✏️');
   dash.getRange('B26').setBackground('#fff2cc');
   dash.getRange('A26').setValue('Ticket ID / name →');
-  [['Status', 'G'], ['Owner', 'F'], ['Due', 'L'], ['Asana link', 'Q']].forEach(function (r, i) {
+  [
+    ['Status', 'G'],
+    ['Owner', 'F'],
+    ['Due', 'L'],
+    ['Asana link', 'Q'],
+  ].forEach(function (r, i) {
     var col = TK + '$' + r[1] + '$2:$' + r[1];
-    dash.getRange(27 + i, 1, 1, 2).setValues([[r[0],
-      '=IF($B$26="","",IFERROR(XLOOKUP(TO_TEXT($B$26),' + TK + '$A$2:$A,' + col + '),XLOOKUP("*"&$B$26&"*",' + TK + '$B$2:$B,' + col + ',"Not found",2)))']]);
+    dash
+      .getRange(27 + i, 1, 1, 2)
+      .setValues([
+        [
+          r[0],
+          '=IF($B$26="","",IFERROR(XLOOKUP(TO_TEXT($B$26),' +
+            TK +
+            '$A$2:$A,' +
+            col +
+            '),XLOOKUP("*"&$B$26&"*",' +
+            TK +
+            '$B$2:$B,' +
+            col +
+            ',"Not found",2)))',
+        ],
+      ]);
   });
   dash.getRange('B29').setNumberFormat('yyyy-mm-dd');
 
   // Workload by owner + flags (QUERY)
   head('D5', 'Open tickets by owner');
-  dash.getRange('D6').setFormula('=IFERROR(QUERY(' + TK + 'A1:Q,"select F, count(A) where O = true group by F order by count(A) desc label F \'Owner\', count(A) \'Open\'",1),"No open tickets")');
+  dash
+    .getRange('D6')
+    .setFormula(
+      '=IFERROR(QUERY(' +
+        TK +
+        'A1:Q,"select F, count(A) where O = true group by F order by count(A) desc label F \'Owner\', count(A) \'Open\'",1),"No open tickets")',
+    );
   head('D20', '⚠ Workload spikes (owner over threshold)');
-  dash.getRange('D21').setFormula('=IFERROR(QUERY(QUERY(' + TK + 'A1:Q,"select F, count(A) where O = true group by F",1),"select Col1, Col2 where Col2 > "&$B$3&" label Col1 \'Owner\', Col2 \'Open\'",1),"None ✅")');
+  dash
+    .getRange('D21')
+    .setFormula(
+      '=IFERROR(QUERY(QUERY(' +
+        TK +
+        'A1:Q,"select F, count(A) where O = true group by F",1),"select Col1, Col2 where Col2 > "&$B$3&" label Col1 \'Owner\', Col2 \'Open\'",1),"None ✅")',
+    );
   head('D30', '⚠ Scheduling conflicts (same owner, 2+ due same day)');
-  dash.getRange('D31').setFormula('=IFERROR(QUERY(QUERY(' + TK + 'A1:Q,"select F, L, count(A) where O = true and L is not null group by F, L",1),"select Col1, Col2, Col3 where Col3 >= 2 label Col1 \'Owner\', Col2 \'Due\', Col3 \'Deliverables\'",1),"None ✅")');
+  dash
+    .getRange('D31')
+    .setFormula(
+      '=IFERROR(QUERY(QUERY(' +
+        TK +
+        'A1:Q,"select F, L, count(A) where O = true and L is not null group by F, L",1),"select Col1, Col2, Col3 where Col3 >= 2 label Col1 \'Owner\', Col2 \'Due\', Col3 \'Deliverables\'",1),"None ✅")',
+    );
 
   // Date-based lists (FILTER)
   var cols = '{' + TK + 'B2:B,' + TK + 'F2:F,' + TK + 'L2:L,' + TK + 'G2:G}';
@@ -81,27 +140,60 @@ function setupDashboard() {
     ['R', '📅 Due this week (Mon–Sun)', TK + 'L2:L>=' + MONDAY + ',' + TK + 'L2:L<' + MONDAY + '+7'],
   ].forEach(function (l) {
     head(l[0] + '5', l[1]);
-    dash.getRange(l[0] + '6').offset(0, 0, 1, 4).setValues(listHeader).setFontWeight('bold');
+    dash
+      .getRange(l[0] + '6')
+      .offset(0, 0, 1, 4)
+      .setValues(listHeader)
+      .setFontWeight('bold');
     dash.getRange(l[0] + '7').setFormula('=IFERROR(FILTER(' + cols + ',' + TK + 'O2:O=TRUE,' + TK + 'L2:L<>"",' + l[2] + '),"None ✅")');
-    dash.getRange(l[0] + '7').offset(0, 2, 60, 1).setNumberFormat('yyyy-mm-dd');
+    dash
+      .getRange(l[0] + '7')
+      .offset(0, 2, 60, 1)
+      .setNumberFormat('yyyy-mm-dd');
   });
 
   // Highlight problems
   var rules = [
-    SpreadsheetApp.newConditionalFormatRule().whenNumberGreaterThan(0).setBackground('#f4c7c3').setRanges([dash.getRange('B11')]).build(),
-    SpreadsheetApp.newConditionalFormatRule().whenNumberGreaterThan(0).setBackground('#fce8b2').setRanges([dash.getRange('B12')]).build(),
+    SpreadsheetApp.newConditionalFormatRule()
+      .whenNumberGreaterThan(0)
+      .setBackground('#f4c7c3')
+      .setRanges([dash.getRange('B11')])
+      .build(),
+    SpreadsheetApp.newConditionalFormatRule()
+      .whenNumberGreaterThan(0)
+      .setBackground('#fce8b2')
+      .setRanges([dash.getRange('B12')])
+      .build(),
   ];
   dash.setConditionalFormatRules(rules);
   formatTicketsTab_(tickets);
 
   // Charts
   var cd = buildChartData_(ss);
-  dash.insertChart(dash.newChart().asLineChart().addRange(cd.getRange('A1:C13'))
-    .setOption('title', 'Requests created vs delivered per week').setOption('legend', { position: 'bottom' })
-    .setPosition(36, 1, 0, 0).setOption('width', 520).setOption('height', 260).build());
-  dash.insertChart(dash.newChart().asColumnChart().addRange(dash.getRange('D6:E18'))
-    .setOption('title', 'Open tickets by owner').setOption('legend', { position: 'none' })
-    .setPosition(36, 6, 0, 0).setOption('width', 480).setOption('height', 260).build());
+  dash.insertChart(
+    dash
+      .newChart()
+      .asLineChart()
+      .addRange(cd.getRange('A1:C13'))
+      .setOption('title', 'Requests created vs delivered per week')
+      .setOption('legend', { position: 'bottom' })
+      .setPosition(36, 1, 0, 0)
+      .setOption('width', 520)
+      .setOption('height', 260)
+      .build(),
+  );
+  dash.insertChart(
+    dash
+      .newChart()
+      .asColumnChart()
+      .addRange(dash.getRange('D6:E18'))
+      .setOption('title', 'Open tickets by owner')
+      .setOption('legend', { position: 'none' })
+      .setPosition(36, 6, 0, 0)
+      .setOption('width', 480)
+      .setOption('height', 260)
+      .build(),
+  );
 
   // Pivot: request type × month
   head('A52', 'Requests by type × month (pivot table)');
@@ -121,8 +213,16 @@ function setupDashboard() {
 function formatTicketsTab_(sh) {
   var range = sh.getRange('A2:Q' + sh.getMaxRows());
   sh.setConditionalFormatRules([
-    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND($O2=TRUE,$L2<>"",$L2<TODAY())').setBackground('#f4c7c3').setRanges([range]).build(),
-    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND($O2=TRUE,$L2<>"",$L2>=TODAY(),$L2<=TODAY()+2)').setBackground('#fce8b2').setRanges([range]).build(),
+    SpreadsheetApp.newConditionalFormatRule()
+      .whenFormulaSatisfied('=AND($O2=TRUE,$L2<>"",$L2<TODAY())')
+      .setBackground('#f4c7c3')
+      .setRanges([range])
+      .build(),
+    SpreadsheetApp.newConditionalFormatRule()
+      .whenFormulaSatisfied('=AND($O2=TRUE,$L2<>"",$L2>=TODAY(),$L2<=TODAY()+2)')
+      .setBackground('#fce8b2')
+      .setRanges([range])
+      .build(),
     SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$O2=FALSE').setFontColor('#999999').setRanges([range]).build(),
   ]);
   sh.setFrozenRows(1);
@@ -136,11 +236,13 @@ function buildChartData_(ss) {
   sh.getRange('A1:C1').setValues([['Week of', 'Created', 'Delivered']]);
   for (var i = 0; i < 12; i++) {
     var r = i + 2;
-    sh.getRange(r, 1, 1, 3).setFormulas([[
-      i === 0 ? '=' + MONDAY + '-77' : '=A' + (r - 1) + '+7',
-      '=COUNTIFS(' + TK + '$K$2:$K,">="&A' + r + ',' + TK + '$K$2:$K,"<"&A' + r + '+7)',
-      '=COUNTIFS(' + TK + '$M$2:$M,">="&A' + r + ',' + TK + '$M$2:$M,"<"&A' + r + '+7)',
-    ]]);
+    sh.getRange(r, 1, 1, 3).setFormulas([
+      [
+        i === 0 ? '=' + MONDAY + '-77' : '=A' + (r - 1) + '+7',
+        '=COUNTIFS(' + TK + '$K$2:$K,">="&A' + r + ',' + TK + '$K$2:$K,"<"&A' + r + '+7)',
+        '=COUNTIFS(' + TK + '$M$2:$M,">="&A' + r + ',' + TK + '$M$2:$M,"<"&A' + r + '+7)',
+      ],
+    ]);
   }
   sh.getRange('A2:A13').setNumberFormat('mmm d');
   return sh;
@@ -182,7 +284,8 @@ function addTicketFilterViews_(ss, sh) {
  * The weekly status update: sync → numbers + flags → email to you, ready to
  * forward to the exec team. This is what replaces chasing status in DMs.
  */
-function sendWeeklySummary() {
+function sendWeeklySummary(extras) {
+  extras = extras || {};
   var ss = reportSpreadsheet_();
   var tickets = syncTickets();
   var dash = ss.getSheetByName('Dashboard');
@@ -192,21 +295,80 @@ function sendWeeklySummary() {
   var boardUrl = 'https://app.asana.com/0/' + activeProjectGid_() + '/board';
 
   var list = function (items, fmt) {
-    return items.length ? '<ul>' + items.map(function (t) { return '<li>' + fmt(t) + '</li>'; }).join('') + '</ul>' : '<p style="color:#2e7d32">None ✅</p>';
+    return items.length
+      ? '<ul>' +
+          items
+            .map(function (t) {
+              return '<li>' + fmt(t) + '</li>';
+            })
+            .join('') +
+          '</ul>'
+      : '<p style="color:#2e7d32">None ✅</p>';
   };
-  var task = function (t) { return escapeHtml_(t.name) + ' — ' + escapeHtml_(t.owner) + ', due ' + t.due + ' (' + t.status + ')'; };
+  var task = function (t) {
+    return escapeHtml_(t.name) + ' — ' + escapeHtml_(t.owner) + ', due ' + t.due + ' (' + t.status + ')';
+  };
 
   var html = [
     '<h2 style="margin:0">WiCS Marketing — weekly status (' + today + ')</h2>',
-    '<p><b>' + s.open + '</b> open · <b>' + s.createdThisWeek + '</b> new this week · <b>' + s.deliveredThisWeek + '</b> delivered this week · ' +
-      '<b>' + s.total + '</b> tracked in total (' + s.fromForm + ' via form, ' + s.fromBackfill + ' backfilled) · ' +
-      'median cycle time <b>' + (s.medianCycleDays === null ? '—' : s.medianCycleDays + ' days') + '</b> · on-time <b>' + (s.onTimePct === null ? '—' : s.onTimePct + '%') + '</b></p>',
+    '<p><b>' +
+      s.open +
+      '</b> open · <b>' +
+      s.createdThisWeek +
+      '</b> new this week · <b>' +
+      s.deliveredThisWeek +
+      '</b> delivered this week · ' +
+      '<b>' +
+      s.total +
+      '</b> tracked in total (' +
+      s.fromForm +
+      ' via form, ' +
+      s.fromBackfill +
+      ' backfilled) · ' +
+      'median cycle time <b>' +
+      (s.medianCycleDays === null ? '—' : s.medianCycleDays + ' days') +
+      '</b> · on-time <b>' +
+      (s.onTimePct === null ? '—' : s.onTimePct + '%') +
+      '</b></p>',
     '<h3>🔴 Overdue (' + s.overdue.length + ')</h3>' + list(s.overdue, task),
     '<h3>🟠 Due in the next 48 hours (' + s.due48h.length + ')</h3>' + list(s.due48h, task),
     '<h3>📅 Due this week (' + s.dueThisWeek.length + ')</h3>' + list(s.dueThisWeek, task),
-    '<h3>⚠ Workload spikes (more than ' + threshold + ' open)</h3>' + list(s.spikes, function (x) { return escapeHtml_(x.owner) + ': ' + x.open + ' open'; }),
-    '<h3>⚠ Scheduling conflicts</h3>' + list(s.conflicts, function (c) { return escapeHtml_(c.owner) + ' has ' + c.tasks.length + ' due on ' + c.due + ': ' + c.tasks.map(escapeHtml_).join('; '); }),
-    '<h3>Open by owner</h3>' + list(Object.keys(s.byOwner).map(function (o) { return { owner: o, n: s.byOwner[o] }; }), function (x) { return escapeHtml_(x.owner) + ': ' + x.n; }),
+    '<h3>⚠ Workload spikes (more than ' +
+      threshold +
+      ' open)</h3>' +
+      list(s.spikes, function (x) {
+        return escapeHtml_(x.owner) + ': ' + x.open + ' open';
+      }),
+    '<h3>⚠ Scheduling conflicts</h3>' +
+      list(s.conflicts, function (c) {
+        return escapeHtml_(c.owner) + ' has ' + c.tasks.length + ' due on ' + c.due + ': ' + c.tasks.map(escapeHtml_).join('; ');
+      }),
+    '<h3>Open by owner</h3>' +
+      list(
+        Object.keys(s.byOwner).map(function (o) {
+          return { owner: o, n: s.byOwner[o] };
+        }),
+        function (x) {
+          return escapeHtml_(x.owner) + ': ' + x.n;
+        },
+      ),
+    extras.idle
+      ? '<h3>💤 No reply to "still needed?" for 7+ days — consider archiving (' +
+        extras.idle.flagged.length +
+        ')</h3>' +
+        list(extras.idle.flagged, task) +
+        '<p style="color:#666">Asked "still needed?" this week: ' +
+        extras.idle.asked.length +
+        '</p>'
+      : '',
+    extras.naming
+      ? '<h3>📁 New library files breaking the naming convention (' +
+        extras.naming.length +
+        ')</h3>' +
+        list(extras.naming, function (f) {
+          return '<a href="' + f.link + '">' + escapeHtml_(f.name) + '</a> in ' + escapeHtml_(f.folder || '/');
+        })
+      : '',
     '<p><a href="' + ss.getUrl() + '">Dashboard</a> · <a href="' + boardUrl + '">Asana board</a></p>',
   ].join('\n');
 
@@ -216,13 +378,29 @@ function sendWeeklySummary() {
     htmlBody: html,
     name: 'WiCS Creative Ops',
   });
-  logRun_('sendWeeklySummary', 'ok', '', JSON.stringify({ open: s.open, overdue: s.overdue.length, spikes: s.spikes.length, conflicts: s.conflicts.length }));
+  logRun_(
+    'sendWeeklySummary',
+    'ok',
+    '',
+    JSON.stringify({ open: s.open, overdue: s.overdue.length, spikes: s.spikes.length, conflicts: s.conflicts.length }),
+  );
 }
 
-/** Monday-morning job: archive old Delivered cards, then send the summary. */
+/** Monday-morning job: archive old Delivered cards, chase idle tickets, check new file names, send the summary. */
 function weeklyJob() {
   archiveDelivered();
-  sendWeeklySummary();
+  var extras = {};
+  try {
+    extras.idle = checkIdleTickets();
+  } catch (e) {
+    logRun_('weeklyJob', 'error', '', 'idle check: ' + e.message);
+  }
+  try {
+    if (getProp_('SANDBOX_ROOT_ID')) extras.naming = checkNamingConvention(7);
+  } catch (e) {
+    logRun_('weeklyJob', 'error', '', 'naming check: ' + e.message);
+  }
+  sendWeeklySummary(extras);
 }
 
 /** Hourly sync + Monday 8am weekly job. Re-running replaces, never duplicates. */

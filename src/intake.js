@@ -71,10 +71,33 @@ function processSubmission(raw, responseId, source) {
 
     // 5. Log it immediately — this row is what prevents duplicates on a re-run.
     appendIntakeLog_([
-      new Date(), responseId, task.gid, task.url, name, req.type, req.event, req.requestorName,
-      req.requestorEmail, task.assigneeName, req.neededBy, priority, sectionName,
-      timing.rush ? 'Yes' : 'No', missing.join(' | '), source, folder.url,
+      new Date(),
+      responseId,
+      task.gid,
+      task.url,
+      name,
+      req.type,
+      req.event,
+      req.requestorName,
+      req.requestorEmail,
+      task.assigneeName,
+      req.neededBy,
+      priority,
+      sectionName,
+      timing.rush ? 'Yes' : 'No',
+      missing.join(' | '),
+      source,
+      folder.url,
     ]);
+
+    // Sponsor/partner involved → start an approval-tracking row.
+    if (req.sponsor) {
+      try {
+        appendApprovalRow_(name, req.event, task.url);
+      } catch (apprErr) {
+        logRun_('appendApprovalRow_', 'error', task.gid, String(apprErr));
+      }
+    }
 
     // 6. Tell the requestor. A failed email shouldn't undo a created ticket, so it's caught separately.
     try {
@@ -92,8 +115,21 @@ function processSubmission(raw, responseId, source) {
       logRun_('sendConfirmationEmail_', 'error', task.gid, mailErr.stack || String(mailErr));
     }
 
-    logRun_('processSubmission', 'ok', task.gid, sectionName + (timing.rush ? ', rush' : '') + (task.assigneeFellBack ? ', owner not in Asana → assigned to you' : ''));
-    return { duplicate: false, taskGid: task.gid, taskUrl: task.url, section: sectionName, missing: missing, rush: timing.rush, priority: priority };
+    logRun_(
+      'processSubmission',
+      'ok',
+      task.gid,
+      sectionName + (timing.rush ? ', rush' : '') + (task.assigneeFellBack ? ', owner not in Asana → assigned to you' : ''),
+    );
+    return {
+      duplicate: false,
+      taskGid: task.gid,
+      taskUrl: task.url,
+      section: sectionName,
+      missing: missing,
+      rush: timing.rush,
+      priority: priority,
+    };
   } catch (err) {
     logRun_('processSubmission', 'error', '', 'response ' + responseId + ': ' + (err.stack || err));
     throw err;

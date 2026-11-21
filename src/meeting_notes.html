@@ -1,0 +1,55 @@
+<html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:4px 8px}code{font-family:"Roboto Mono",monospace}</style></head><body><h1>WiCS Marketing: Meeting Notes</h1>
+<p><strong>Date:</strong> {{DATE}}
+<strong>Attendees:</strong> {{ATTENDEES}}
+<strong>Note-taker:</strong> {{NOTE_TAKER}}</p>
+<h2>Agenda</h2>
+<ol>
+<li>Board review: overdue, due this week, Needs Info</li>
+<li>Workload: spikes and same-day conflicts (from the Dashboard)</li>
+<li>Upcoming events and sponsor approvals</li>
+<li>{{OTHER_ITEM}}</li>
+</ol>
+<h2>Notes</h2>
+<ul>
+<li>{{NOTES}}</li>
+</ul>
+<h2>Decisions</h2>
+<ul>
+<li>{{DECISION}}</li>
+</ul>
+<h2>Action items</h2>
+<p>Every action item needs an owner and a due date. Mark &quot;Yes&quot; in the Asana column if it should become a task on the board.</p>
+<table>
+<thead>
+<tr>
+<th>Owner</th>
+<th>Task</th>
+<th>Due (YYYY-MM-DD)</th>
+<th>Asana?</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>{{OWNER}}</td>
+<td>{{TASK}}</td>
+<td>{{DUE}}</td>
+<td>Yes / No</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<h2>Parking lot</h2>
+<p><em>Things raised but not decided; bring back next time.</em></p>
+<ul>
+<li>{{PARKED_ITEM}}</li>
+</ul>
+</body></html>
