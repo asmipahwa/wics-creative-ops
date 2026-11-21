@@ -247,6 +247,83 @@ function surveyOriginal() {
 }
 
 /**
+ * READ-ONLY breakdown of the source folder, one row per subfolder (e.g. per event),
+ * written to a `Survey` tab: files, creative files, GB, newest file date. Changes nothing
+ * in Drive. Use it to choose which subfolders to copy so the sandbox fits in your storage.
+ */
+function surveyByFolder() {
+  var started = Date.now();
+  var rootId = sourceFolderId_();
+  var top = listChildren_(rootId);
+  var rows = [];
+  var looseFiles = top.filter(function (f) {
+    return f.mimeType !== FOLDER_MIME_TYPE;
+  });
+  var sub = top.filter(function (f) {
+    return f.mimeType === FOLDER_MIME_TYPE;
+  });
+  var tally = function (name, id, seedFiles) {
+    var files = 0,
+      creative = 0,
+      bytes = 0,
+      newest = '';
+    var count = function (f) {
+      files++;
+      bytes += Number(f.size || 0);
+      if (isCreativeFile(f.mimeType, f.name)) creative++;
+      if (f.modifiedTime > newest) newest = f.modifiedTime;
+    };
+    (seedFiles || []).forEach(count);
+    var queue = id ? [id] : [];
+    while (queue.length) {
+      listChildren_(queue.shift()).forEach(function (f) {
+        if (f.mimeType === FOLDER_MIME_TYPE) queue.push(f.id);
+        else count(f);
+      });
+    }
+    rows.push([
+      name,
+      id ? 'https://drive.google.com/drive/folders/' + id : '',
+      files,
+      creative,
+      Math.round((bytes / 1073741824) * 100) / 100,
+      newest ? newest.slice(0, 10) : '',
+    ]);
+  };
+  if (looseFiles.length) tally('(files directly in this folder)', '', looseFiles);
+  for (var i = 0; i < sub.length; i++) {
+    if (Date.now() - started > LIB_TIME_BUDGET_MS) {
+      rows.push(['(stopped: time limit — ' + (sub.length - i) + ' folders not counted)', '', '', '', '', '']);
+      break;
+    }
+    tally(sub[i].name, sub[i].id);
+  }
+  rows.sort(function (a, b) {
+    return String(b[5]).localeCompare(String(a[5]));
+  });
+  var sh = getOrCreateTab_(reportSpreadsheet_(), 'Survey', ['Subfolder', 'Link', 'Files', 'Creative files', 'GB', 'Newest file']);
+  if (sh.getMaxRows() > 1) sh.getRange(2, 1, sh.getMaxRows() - 1, 6).clearContent();
+  if (rows.length) sh.getRange(2, 1, rows.length, 6).setValues(rows);
+  var totals = rows.reduce(
+    function (t, r) {
+      return [t[0] + (Number(r[2]) || 0), t[1] + (Number(r[3]) || 0), t[2] + (Number(r[4]) || 0)];
+    },
+    [0, 0, 0],
+  );
+  var msg =
+    sub.length +
+    ' subfolders: ' +
+    totals[0] +
+    ' files, ' +
+    totals[1] +
+    ' creative, ' +
+    totals[2].toFixed(2) +
+    ' GB. Details in the Survey tab (newest first).';
+  logRun_('surveyByFolder', 'ok', '', msg);
+  Logger.log(msg);
+}
+
+/**
  * Copy the original folder tree into "WiCS Marketing (Sandbox)" in My Drive.
  * Only READS the original. Resumable: CopyLog remembers what's done; if time runs
  * out it schedules itself to continue in a minute.

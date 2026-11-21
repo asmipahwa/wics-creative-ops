@@ -229,6 +229,17 @@ function dedupeNames(proposals) {
   });
 }
 
+/**
+ * Is this a creative asset (what "300+ creative assets" counts)? Images, video, PDFs,
+ * slide decks and design files count; docs, sheets, forms, shortcuts and zips don't.
+ */
+function isCreativeFile(mimeType, name) {
+  var m = String(mimeType || '');
+  if (m.indexOf('image/') === 0 || m.indexOf('video/') === 0) return true;
+  if (m === 'application/pdf' || m === 'application/vnd.google-apps.presentation') return true;
+  return /\.(psd|ai|indd|fig|sketch|xd|afdesign|afphoto|canva|svg|heic|raw|cr2|nef|mov|mp4|m4v|gif|pptx?|key)$/i.test(String(name || ''));
+}
+
 if (typeof module !== 'undefined') {
   // In Node (Jest), make logic.js helpers global, as they are in Apps Script. No `var` here on purpose:
   // redeclaring them would be confusing in Apps Script's shared global scope.
@@ -243,5 +254,6 @@ if (typeof module !== 'undefined') {
     matchKeyword: matchKeyword,
     proposeLocation: proposeLocation,
     dedupeNames: dedupeNames,
+    isCreativeFile: isCreativeFile,
   };
 }

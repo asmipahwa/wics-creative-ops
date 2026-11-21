@@ -154,3 +154,18 @@ describe('dedupeNames', () => {
     ]);
   });
 });
+
+describe('isCreativeFile', () => {
+  test('counts images, video, PDFs, decks, design files', () => {
+    expect(L.isCreativeFile('image/png', 'a.png')).toBe(true);
+    expect(L.isCreativeFile('video/mp4', 'a.mp4')).toBe(true);
+    expect(L.isCreativeFile('application/pdf', 'poster.pdf')).toBe(true);
+    expect(L.isCreativeFile('application/vnd.google-apps.presentation', 'deck')).toBe(true);
+    expect(L.isCreativeFile('application/octet-stream', 'poster.psd')).toBe(true);
+  });
+  test('does not count docs, sheets, forms, shortcuts', () => {
+    expect(L.isCreativeFile('application/vnd.google-apps.document', 'notes')).toBe(false);
+    expect(L.isCreativeFile('application/vnd.google-apps.spreadsheet', 'budget')).toBe(false);
+    expect(L.isCreativeFile('application/vnd.google-apps.shortcut', 'x')).toBe(false);
+  });
+});
