@@ -155,7 +155,8 @@ function asanaCreateTask_(t) {
   } catch (err) {
     if (err.status === 400 && /assignee/i.test(err.message) && payload.assignee !== 'me') {
       payload.assignee = 'me';
-      payload.notes = 'NOTE: routed owner (' + t.assignee + ') is not in the Asana workspace yet — assigned to coordinator.\n\n' + payload.notes;
+      payload.notes =
+        'NOTE: routed owner (' + t.assignee + ') is not in the Asana workspace yet — assigned to coordinator.\n\n' + payload.notes;
       task = asanaFetch_('post', '/tasks?opt_fields=gid,permalink_url,assignee.name', payload);
       assigneeFellBack = true;
     } else {
@@ -180,7 +181,12 @@ function asanaListProjectTasks_(projectGid, optFields) {
   var all = [];
   var offset = null;
   do {
-    var path = '/projects/' + projectGid + '/tasks?limit=100&opt_fields=' + encodeURIComponent(optFields) + (offset ? '&offset=' + encodeURIComponent(offset) : '');
+    var path =
+      '/projects/' +
+      projectGid +
+      '/tasks?limit=100&opt_fields=' +
+      encodeURIComponent(optFields) +
+      (offset ? '&offset=' + encodeURIComponent(offset) : '');
     var page = asanaFetch_('get', path, null, true);
     all = all.concat(page.data || []);
     offset = page.next_page ? page.next_page.offset : null;

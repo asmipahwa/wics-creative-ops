@@ -3,11 +3,17 @@ const L = require('../src/logic');
 const routing = [
   { type: 'Reel', ownerName: 'Ari', ownerEmail: 'ari@example.com', leadDays: 7, needsReferences: true, needsEventDate: false },
   { type: 'Poster/Print', ownerName: '', ownerEmail: '', leadDays: 10, needsReferences: true, needsEventDate: true },
-  { type: 'Default', ownerName: 'Coordinator', ownerEmail: 'coord@example.com', leadDays: 5, needsReferences: false, needsEventDate: false },
+  {
+    type: 'Default',
+    ownerName: 'Coordinator',
+    ownerEmail: 'coord@example.com',
+    leadDays: 5,
+    needsReferences: false,
+    needsEventDate: false,
+  },
 ];
 
-const longDesc =
-  'A thirty second reel recapping the hackathon for first year students showing teams presenting and the winners on stage';
+const longDesc = 'A thirty second reel recapping the hackathon for first year students showing teams presenting and the winners on stage';
 
 function req(overrides) {
   return L.normalizeRequest(
@@ -24,8 +30,8 @@ function req(overrides) {
         references: 'https://example.com/ref',
         sponsor: 'No',
       },
-      overrides
-    )
+      overrides,
+    ),
   );
 }
 
@@ -129,7 +135,13 @@ describe('names + notes', () => {
   });
   test('notes carry response id + source for idempotency and sync', () => {
     const notes = L.buildTaskNotes(req(), {
-      priority: 'P2', rush: false, leadDays: 7, requestedDate: '2026-11-19', source: 'form', responseId: 'resp-1', missing: ['The event date'],
+      priority: 'P2',
+      rush: false,
+      leadDays: 7,
+      requestedDate: '2026-11-19',
+      source: 'form',
+      responseId: 'resp-1',
+      missing: ['The event date'],
     });
     expect(notes).toMatch(/^Requestor: Sam <sam@example.com>/);
     expect(notes).toMatch(/form_response_id: resp-1$/);

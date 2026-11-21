@@ -21,21 +21,33 @@ function sendConfirmationEmail_(req, ctx) {
       row_('Owner', ctx.ownerName || 'Marketing team') +
       row_('Due date', req.neededBy || '—') +
       row_('Priority', ctx.priority) +
-      row_('Status', needsInfo ? 'Needs Info — waiting on you' : 'Intake — we\'ll pick it up soon') +
+      row_('Status', needsInfo ? 'Needs Info — waiting on you' : "Intake — we'll pick it up soon") +
       row_('Ticket link', '<a href="' + ctx.taskUrl + '">Open in Asana</a> (marketing team members)') +
-      '</table>'
+      '</table>',
   );
 
   if (needsInfo) {
-    parts.push('<p><b>We need a bit more before we can start:</b></p><ul>' +
-      ctx.missing.map(function (m) { return '<li>' + escapeHtml_(m) + '</li>'; }).join('') +
-      '</ul><p>Just reply to this email with the details and quote your Ticket ID.</p>');
+    parts.push(
+      '<p><b>We need a bit more before we can start:</b></p><ul>' +
+        ctx.missing
+          .map(function (m) {
+            return '<li>' + escapeHtml_(m) + '</li>';
+          })
+          .join('') +
+        '</ul><p>Just reply to this email with the details and quote your Ticket ID.</p>',
+    );
   }
 
   if (ctx.timing.rush) {
-    parts.push('<p><b>Heads up — this is a rush request.</b> ' + escapeHtml_(req.type) + ' requests usually need ' +
-      ctx.leadDays + ' days of lead time and this one is due in ' + ctx.timing.daysUntilDue +
-      ' day(s). We\'ll do our best, but we may need to simplify the deliverable or move the date.</p>');
+    parts.push(
+      '<p><b>Heads up — this is a rush request.</b> ' +
+        escapeHtml_(req.type) +
+        ' requests usually need ' +
+        ctx.leadDays +
+        ' days of lead time and this one is due in ' +
+        ctx.timing.daysUntilDue +
+        " day(s). We'll do our best, but we may need to simplify the deliverable or move the date.</p>",
+    );
   }
 
   parts.push('<p>Questions about status or timing? Reply to this email with your Ticket ID.</p><p>— WiCS Marketing</p>');

@@ -36,3 +36,15 @@
 - The weekly email logic (`summarizeTickets`) mirrors the Dashboard formulas and is unit-tested.
 
 **Deferred (nice-to-have, §0.5):** the idle-ticket "still needed?" emails.
+
+## Sprint 3: Asset library + wiki (code written 2026-11-20, not yet run)
+- `src/library_logic.js`: pure, unit-tested code covering the safety guard (`checkInSandbox`), the naming-convention parser, academic year, date-from-name, type/channel guessing, folder proposal and version dedupe.
+- `src/library.js`: `surveyOriginal` (read-only), `copyToSandbox` (resumable, with CopyLog), `inventorySandbox`, `proposeRestructure` (suggests Events from real folder names), `approvePlan`, `applyRestructure` (guard plus UndoLog, archives emptied folders), `undoRestructure`, `setupSearchTab` with filter views, `checkNamingConvention` and `resetLibraryRehearsal`.
+- **Safety model:** scopes are now `drive.readonly` + `drive.file`, so Google itself blocks changes to anything the script didn't create.
+- **Bug caught by a unit test:** a legacy folder named "Old" was being sent to WIP. Removed "old" from the WIP keywords.
+- `src/docs.js` turns `docs/wiki/wiki.md` and `templates/meeting-notes.md` (built to HTML with `npm run build:html`) into Google Docs, and fills in the real links inside Drive only.
+
+## Sprint 4: Polish (2026-11-20)
+- `src/trackers.js`: Vendors and Approvals tabs with flag formulas. Sponsor requests from the form add an Approvals row. `checkIdleTickets` sends "still needed?" after 14 idle days and flags no-reply after 7. Both feed into `weeklyJob`.
+- ESLint, Prettier, a GitHub Actions CI workflow (lint, 76 Jest tests and a secrets scan) and a PR template.
+- Docs: README, DESIGN, wiki, LIBRARY, and the results templates.

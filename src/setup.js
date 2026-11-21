@@ -39,7 +39,9 @@ function setupGoogleSide() {
 
   // Requests working-folder root
   var folderId = getProp_(P.REQUESTS_FOLDER_ID);
-  var folder = folderId ? { id: folderId, url: 'https://drive.google.com/drive/folders/' + folderId } : createFolder_(CONFIG.REQUESTS_FOLDER_NAME);
+  var folder = folderId
+    ? { id: folderId, url: 'https://drive.google.com/drive/folders/' + folderId }
+    : createFolder_(CONFIG.REQUESTS_FOLDER_NAME);
   setProp_(P.REQUESTS_FOLDER_ID, folder.id);
 
   if (!getProp_(P.MODE)) setProp_(P.MODE, 'test');
@@ -62,7 +64,7 @@ function buildIntakeForm_(spreadsheetId) {
   form
     .setDescription(
       'Use this form for ALL WiCS marketing requests (posts, reels, posters, recaps, sponsor assets, merch). ' +
-        'You\'ll get an email with your ticket ID, owner and due date. Please don\'t send requests by DM — they get lost.'
+        "You'll get an email with your ticket ID, owner and due date. Please don't send requests by DM — they get lost.",
     )
     .setConfirmationMessage('Got it! Check your email for your ticket ID and due date.')
     .setAllowResponseEdits(false);
@@ -71,11 +73,15 @@ function buildIntakeForm_(spreadsheetId) {
   form
     .addTextItem()
     .setTitle(Q.requestorEmail)
-    .setHelpText('We\'ll send your confirmation and any questions here.')
+    .setHelpText("We'll send your confirmation and any questions here.")
     .setValidation(FormApp.createTextValidation().requireTextIsEmail().setHelpText('Please enter a valid email.').build())
     .setRequired(true);
   form.addMultipleChoiceItem().setTitle(Q.type).setChoiceValues(CONFIG.REQUEST_TYPES).setRequired(true);
-  form.addTextItem().setTitle(Q.event).setHelpText('e.g. TryCATCH 2026, Mentorship Program. Write "General" if it isn\'t tied to an event.').setRequired(true);
+  form
+    .addTextItem()
+    .setTitle(Q.event)
+    .setHelpText('e.g. TryCATCH 2026, Mentorship Program. Write "General" if it isn\'t tied to an event.')
+    .setRequired(true);
   form.addDateItem().setTitle(Q.eventDate).setHelpText('Leave blank if not tied to an event.').setRequired(false);
   form
     .addParagraphTextItem()
@@ -86,7 +92,9 @@ function buildIntakeForm_(spreadsheetId) {
   form
     .addDateItem()
     .setTitle(Q.neededBy)
-    .setHelpText('Lead times: Story 2 days · Post/Recap 3 · Reel/Event promo 7 · Poster/Sponsor asset 10 · Merch 21. Sooner = flagged as Rush.')
+    .setHelpText(
+      'Lead times: Story 2 days · Post/Recap 3 · Reel/Event promo 7 · Poster/Sponsor asset 10 · Merch 21. Sooner = flagged as Rush.',
+    )
     .setRequired(true);
   form
     .addParagraphTextItem()
@@ -98,7 +106,12 @@ function buildIntakeForm_(spreadsheetId) {
     .setTitle(Q.references)
     .setHelpText('Links to examples, photos, sponsor brand guidelines, etc. Write "none" if you have none.')
     .setRequired(true);
-  form.addMultipleChoiceItem().setTitle(Q.sponsor).setHelpText('If yes, the partner may need to approve the asset before it goes out.').setChoiceValues(['Yes', 'No']).setRequired(true);
+  form
+    .addMultipleChoiceItem()
+    .setTitle(Q.sponsor)
+    .setHelpText('If yes, the partner may need to approve the asset before it goes out.')
+    .setChoiceValues(['Yes', 'No'])
+    .setRequired(true);
   form.addParagraphTextItem().setTitle(Q.notes).setRequired(false);
 
   // Raw responses also land in the Report Sheet as a backup.
@@ -144,9 +157,18 @@ function activeProjectGidFor_(mode) {
 /** Print what's configured (never prints the token itself). */
 function checkSetup() {
   var props = PropertiesService.getScriptProperties().getProperties();
-  Object.keys(props).sort().forEach(function (k) {
-    var v = k === CONFIG.PROPS.ASANA_TOKEN ? '(set, hidden)' : props[k].length > 80 ? props[k].slice(0, 80) + '…' : props[k];
-    Logger.log(k + ' = ' + v);
-  });
-  Logger.log('Triggers: ' + ScriptApp.getProjectTriggers().map(function (t) { return t.getHandlerFunction(); }).join(', '));
+  Object.keys(props)
+    .sort()
+    .forEach(function (k) {
+      var v = k === CONFIG.PROPS.ASANA_TOKEN ? '(set, hidden)' : props[k].length > 80 ? props[k].slice(0, 80) + '…' : props[k];
+      Logger.log(k + ' = ' + v);
+    });
+  Logger.log(
+    'Triggers: ' +
+      ScriptApp.getProjectTriggers()
+        .map(function (t) {
+          return t.getHandlerFunction();
+        })
+        .join(', '),
+  );
 }

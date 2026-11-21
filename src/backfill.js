@@ -12,8 +12,18 @@
  */
 
 var BACKFILL_HEADERS = [
-  'requested_date', 'requestor', 'type', 'event', 'description', 'owner', 'due_date',
-  'delivered_date', 'status', 'asset_link', 'import_result', 'asana_link',
+  'requested_date',
+  'requestor',
+  'type',
+  'event',
+  'description',
+  'owner',
+  'due_date',
+  'delivered_date',
+  'status',
+  'asset_link',
+  'import_result',
+  'asana_link',
 ];
 var BACKFILL_TIME_BUDGET_MS = 5 * 60 * 1000;
 
@@ -23,10 +33,10 @@ function setupBackfillTab() {
   var sh = getOrCreateTab_(ss, 'Backfill', BACKFILL_HEADERS);
   var rows = 500;
   sh.getRange(2, 3, rows, 1).setDataValidation(
-    SpreadsheetApp.newDataValidation().requireValueInList(CONFIG.REQUEST_TYPES).setAllowInvalid(false).build()
+    SpreadsheetApp.newDataValidation().requireValueInList(CONFIG.REQUEST_TYPES).setAllowInvalid(false).build(),
   );
   sh.getRange(2, 9, rows, 1).setDataValidation(
-    SpreadsheetApp.newDataValidation().requireValueInList(CONFIG.SECTIONS).setAllowInvalid(true).build()
+    SpreadsheetApp.newDataValidation().requireValueInList(CONFIG.SECTIONS).setAllowInvalid(true).build(),
   );
   sh.getRange(2, 1, rows, 1).setNumberFormat('yyyy-mm-dd');
   sh.getRange(2, 7, rows, 2).setNumberFormat('yyyy-mm-dd');
@@ -83,7 +93,13 @@ function importBackfill() {
     }
   }
 
-  var msg = 'imported ' + counts.imported + ', already there ' + counts.skipped + ', need fixing ' + counts.errors +
+  var msg =
+    'imported ' +
+    counts.imported +
+    ', already there ' +
+    counts.skipped +
+    ', need fixing ' +
+    counts.errors +
     (counts.remaining ? ', NOT YET DONE ' + counts.remaining + ' (time limit — run importBackfill again)' : '');
   logRun_('importBackfill', counts.errors ? 'done with errors' : 'ok', '', mode + ': ' + msg);
   Logger.log(msg);
@@ -125,8 +141,23 @@ function createBackfillTask_(row, id, routing) {
   if (DONE_SECTIONS.indexOf(status) !== -1) asanaUpdateTask_(task.gid, { completed: true });
 
   appendIntakeLog_([
-    new Date(), id, task.gid, task.url, buildTaskName(req), req.type, req.event, req.requestorName, '',
-    task.assigneeName, req.neededBy, 'P3', status, 'No', '', 'backfill', '',
+    new Date(),
+    id,
+    task.gid,
+    task.url,
+    buildTaskName(req),
+    req.type,
+    req.event,
+    req.requestorName,
+    '',
+    task.assigneeName,
+    req.neededBy,
+    'P3',
+    status,
+    'No',
+    '',
+    'backfill',
+    '',
   ]);
   return task;
 }

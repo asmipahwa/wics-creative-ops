@@ -10,10 +10,26 @@
  */
 
 var TICKET_HEADERS = [
-  'Task ID', 'Task', 'Type', 'Event', 'Requestor', 'Owner', 'Status', 'Priority', 'Rush', 'Source',
-  'Requested', 'Due', 'Delivered', 'Days open', 'Open?', 'Month', 'Asana link',
+  'Task ID',
+  'Task',
+  'Type',
+  'Event',
+  'Requestor',
+  'Owner',
+  'Status',
+  'Priority',
+  'Rush',
+  'Source',
+  'Requested',
+  'Due',
+  'Delivered',
+  'Days open',
+  'Open?',
+  'Month',
+  'Asana link',
 ];
-var TASK_FIELDS = 'name,notes,completed,completed_at,created_at,due_on,assignee.name,memberships.project.gid,memberships.section.name,permalink_url';
+var TASK_FIELDS =
+  'name,notes,completed,completed_at,created_at,due_on,assignee.name,memberships.project.gid,memberships.section.name,permalink_url';
 
 /** Fetch all tasks, stamp missing Delivered dates in Asana, return ticket objects. */
 function fetchTickets_() {
@@ -61,8 +77,23 @@ function writeTicketsTab_(tickets) {
     })
     .map(function (t) {
       return [
-        t.id, t.name, t.type, t.event, t.requestor, t.owner, t.status, t.priority, t.rush ? 'Yes' : '', t.source,
-        isoToDate_(t.requested), isoToDate_(t.due), isoToDate_(t.delivered), t.daysOpen, t.open, t.month, t.link,
+        t.id,
+        t.name,
+        t.type,
+        t.event,
+        t.requestor,
+        t.owner,
+        t.status,
+        t.priority,
+        t.rush ? 'Yes' : '',
+        t.source,
+        isoToDate_(t.requested),
+        isoToDate_(t.due),
+        isoToDate_(t.delivered),
+        t.daysOpen,
+        t.open,
+        t.month,
+        t.link,
       ];
     });
   if (sh.getMaxRows() > 1) sh.getRange(2, 1, sh.getMaxRows() - 1, TICKET_HEADERS.length).clearContent();

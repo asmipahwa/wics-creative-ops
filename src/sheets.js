@@ -10,9 +10,23 @@
  */
 
 var INTAKE_LOG_HEADERS = [
-  'Logged at', 'Form response ID', 'Asana task ID', 'Asana link', 'Task name', 'Request type',
-  'Event', 'Requestor', 'Requestor email', 'Owner', 'Needed by', 'Priority', 'Section', 'Rush',
-  'Missing info', 'Source', 'Working folder',
+  'Logged at',
+  'Form response ID',
+  'Asana task ID',
+  'Asana link',
+  'Task name',
+  'Request type',
+  'Event',
+  'Requestor',
+  'Requestor email',
+  'Owner',
+  'Needed by',
+  'Priority',
+  'Section',
+  'Rush',
+  'Missing info',
+  'Source',
+  'Working folder',
 ];
 var RUN_LOG_HEADERS = ['Time', 'Function', 'Status', 'Ticket ID', 'Details / error'];
 var ROUTING_HEADERS = ['Request type', 'Owner name', 'Owner email (Asana)', 'Lead time (days)', 'Needs references?', 'Needs event date?'];
@@ -58,7 +72,11 @@ function readRouting_() {
 function findIntakeByResponseId_(responseId) {
   var sh = reportSpreadsheet_().getSheetByName(CONFIG.TABS.INTAKE_LOG);
   if (!sh || sh.getLastRow() < 2) return null;
-  var hit = sh.getRange(2, 2, sh.getLastRow() - 1, 1).createTextFinder(responseId).matchEntireCell(true).findNext();
+  var hit = sh
+    .getRange(2, 2, sh.getLastRow() - 1, 1)
+    .createTextFinder(responseId)
+    .matchEntireCell(true)
+    .findNext();
   if (!hit) return null;
   var row = sh.getRange(hit.getRow(), 1, 1, INTAKE_LOG_HEADERS.length).getValues()[0];
   return { taskGid: String(row[2]), taskUrl: row[3], row: hit.getRow() };

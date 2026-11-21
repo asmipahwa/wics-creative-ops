@@ -23,7 +23,8 @@ function createFolder_(name, parentId) {
 
 /** Find a subfolder this script created, or create it. */
 function getOrCreateSubfolder_(parentId, name) {
-  var q = "name = '" + name.replace(/'/g, "\\'") + "' and '" + parentId + "' in parents and mimeType = '" + FOLDER_MIME + "' and trashed = false";
+  var q =
+    "name = '" + name.replace(/'/g, "\\'") + "' and '" + parentId + "' in parents and mimeType = '" + FOLDER_MIME + "' and trashed = false";
   var found = Drive.Files.list({ q: q, fields: 'files(id)', pageSize: 1 }).files;
   if (found && found.length) return { id: found[0].id, url: 'https://drive.google.com/drive/folders/' + found[0].id };
   return createFolder_(name, parentId);

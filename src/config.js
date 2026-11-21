@@ -16,38 +16,11 @@ var CONFIG = {
   REQUESTS_FOLDER_NAME: 'WiCS Creative Requests – Working Folders',
 
   // Asana board columns, in pipeline order.
-  SECTIONS: [
-    'Intake',
-    'Needs Info',
-    'In Progress',
-    'In Review',
-    'Approved / Scheduled',
-    'Delivered',
-    'Archived',
-  ],
+  SECTIONS: ['Intake', 'Needs Info', 'In Progress', 'In Review', 'Approved / Scheduled', 'Delivered', 'Archived'],
 
-  REQUEST_TYPES: [
-    'Instagram post',
-    'Reel',
-    'Story',
-    'Poster/Print',
-    'Event promo',
-    'Recap',
-    'Sponsor asset',
-    'Merch',
-    'Other',
-  ],
+  REQUEST_TYPES: ['Instagram post', 'Reel', 'Story', 'Poster/Print', 'Event promo', 'Recap', 'Sponsor asset', 'Merch', 'Other'],
 
-  CHANNELS: [
-    'Instagram feed',
-    'Instagram Story',
-    'LinkedIn',
-    'Discord',
-    'Website',
-    'Email newsletter',
-    'Print / on campus',
-    'Other',
-  ],
+  CHANNELS: ['Instagram feed', 'Instagram Story', 'LinkedIn', 'Discord', 'Website', 'Email newsletter', 'Print / on campus', 'Other'],
 
   // A description shorter than this is "incomplete" (spec §2.3).
   MIN_DESCRIPTION_WORDS: 15,
