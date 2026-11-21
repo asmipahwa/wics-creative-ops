@@ -476,6 +476,20 @@ function estimateCopy_() {
  * out it schedules itself to continue in a minute.
  */
 function copyToSandbox() {
+  // One copy run at a time — a second overlapping run could copy files twice.
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) {
+    Logger.log('Another copy run is in progress; exiting.');
+    return;
+  }
+  try {
+    copyToSandboxLocked_();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function copyToSandboxLocked_() {
   var started = Date.now();
   var srcId = sourceFolderId_();
   var log = readTab_('CopyLog', COPYLOG_HEADERS);
@@ -500,6 +514,25 @@ function copyToSandbox() {
     if (r[2] === 'folder' && r[9] === 'pending') pending.push({ row: i + 2, origId: r[0], copyId: r[1], path: r[3] });
   });
 
+  // Log rows are buffered and written in batches (one row at a time was the main slowdown).
+  // Flushed every 20 rows, before marking a folder done, and before pausing — so at most
+  // a few copies could ever be unlogged if Apps Script killed the run mid-batch.
+  var nextRow = sh.getLastRow() + 1;
+  var buffer = [];
+  var bufferStart = nextRow;
+  var addRow = function (values) {
+    buffer.push(values);
+    var row = nextRow++;
+    if (buffer.length >= 20) flush();
+    return row;
+  };
+  var flush = function () {
+    if (!buffer.length) return;
+    sh.getRange(bufferStart, 1, buffer.length, COPYLOG_HEADERS.length).setValues(buffer);
+    bufferStart += buffer.length;
+    buffer = [];
+  };
+
   var excluded = excludedFolderIds_();
   var settings = copySettings_();
   var copied = 0;
@@ -510,6 +543,7 @@ function copyToSandbox() {
       var c = children[i];
       if (state[c.id]) continue;
       if (Date.now() - started > LIB_TIME_BUDGET_MS) {
+        flush();
         scheduleContinuation_('continueSandboxCopy');
         logRun_('copyToSandbox', 'paused (time limit) — continues automatically', '', copied + ' copied this run');
         return;
@@ -520,33 +554,35 @@ function copyToSandbox() {
         var skipWhy = c.mimeType === FOLDER_MIME_TYPE ? (excluded[c.id] ? 'Copy? = No in Survey tab' : '') : copySkipReason(c, settings);
         if (skipWhy) {
           base[2] = c.mimeType === FOLDER_MIME_TYPE ? 'folder' : 'file';
-          sh.appendRow(base.concat(['skipped', skipWhy]));
+          addRow(base.concat(['skipped', skipWhy]));
         } else if (c.mimeType === FOLDER_MIME_TYPE) {
           var nf = createFolder_(c.name, folder.copyId);
           base[1] = nf.id;
           base[2] = 'folder';
-          sh.appendRow(base.concat(['pending', '']));
-          pending.push({ row: sh.getLastRow(), origId: c.id, copyId: nf.id, path: path });
+          var newRow = addRow(base.concat(['pending', '']));
+          pending.push({ row: newRow, origId: c.id, copyId: nf.id, path: path });
         } else if (SKIP_MIME.indexOf(c.mimeType) !== -1) {
           base[2] = 'file';
-          sh.appendRow(base.concat(['skipped', 'type cannot be copied']));
+          addRow(base.concat(['skipped', 'type cannot be copied']));
         } else {
           var cp = Drive.Files.copy({ name: c.name, parents: [folder.copyId] }, c.id, { supportsAllDrives: true, fields: 'id' });
           base[1] = cp.id;
           base[2] = 'file';
-          sh.appendRow(base.concat(['copied', '']));
+          addRow(base.concat(['copied', '']));
           copied++;
         }
       } catch (e) {
         base[2] = c.mimeType === FOLDER_MIME_TYPE ? 'folder' : 'file';
-        sh.appendRow(base.concat(['error', String(e.message || e).slice(0, 300)]));
+        addRow(base.concat(['error', String(e.message || e).slice(0, 300)]));
       }
       state[c.id] = true;
     }
+    flush();
     sh.getRange(folder.row, 10).setValue('done');
     pending.shift();
   }
 
+  flush();
   clearContinuation_('continueSandboxCopy');
   var final = readTab_('CopyLog', COPYLOG_HEADERS).rows;
   var n = function (status) {
