@@ -18,3 +18,21 @@
 - **Lead-time rule is enforced by the script (Rush flag), not the form.** Forms can't validate a date relative to today.
 
 **Not yet done (needs you)**: clasp login, the Asana token, running setup, smoke tests and 3 real test submissions, then switching to live. See `docs/SETUP.md`.
+
+**Sprint 1 live status (2026-11-20):** setup done, 4/4 smoke tests passed, 3 real form submissions created cards and emails. Open item: confirm the 3 form cards landed in the expected columns (now visible on the Tickets tab after a sync).
+
+## Sprint 2: Backfill + report (code written 2026-11-20)
+
+**Built**
+- `src/backfill.js`: `setupBackfillTab` and `importBackfill`. Validates each row, dedupes on a hash of date + type + event + description (per mode), places tasks in the right column, marks Delivered/Archived tasks complete, writes a result to each row, and is resumable within the 6-minute limit.
+- `src/sync.js`: `syncTickets` pulls all tasks page by page and rebuilds the Tickets tab. It writes the Delivered date into Asana the first time a card reaches Delivered or Archived. `archiveDelivered` moves cards Delivered 14+ days ago to Archived.
+- `src/report.js`: `setupDashboard` sets up KPIs, status counts, an XLOOKUP status lookup, owner workload, spike and conflict flags, overdue/48h/this-week lists, 2 charts, a type × month pivot, conditional formatting and 6 filter views. `sendWeeklySummary`, `weeklyJob` (Mondays 8am) and `installReportTriggers` (hourly sync) are here too.
+- Pure logic in `logic.js` (status mapping, backfill validation, notes parsing, ticket rows, summary, spike and conflict detection), with 25 more Jest tests (46 total).
+- Docs: `docs/BACKFILL.md` and `docs/REPORT.md` (every formula explained).
+
+**Decisions**
+- The Delivered date is stored in the Asana task description and stamped once. Asana's own completion date would be the import date for backfilled tasks, which would distort cycle time.
+- A `Delivered` backfill row needs a real delivered date. The importer refuses to guess.
+- The weekly email logic (`summarizeTickets`) mirrors the Dashboard formulas and is unit-tested.
+
+**Deferred (nice-to-have, §0.5):** the idle-ticket "still needed?" emails.

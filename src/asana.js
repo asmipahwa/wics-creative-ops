@@ -13,7 +13,7 @@
 var ASANA_MAX_RETRIES = 5;
 
 /** Call Asana. `body` is wrapped in {data: …} as Asana expects. Returns the `data` part. */
-function asanaFetch_(method, path, body) {
+function asanaFetch_(method, path, body, wantFullResponse) {
   var token = getProp_(CONFIG.PROPS.ASANA_TOKEN, true);
   var options = {
     method: method,
@@ -28,7 +28,9 @@ function asanaFetch_(method, path, body) {
     var status = res.getResponseCode();
     if (status >= 200 && status < 300) {
       var text = res.getContentText();
-      return text ? JSON.parse(text).data : null;
+      if (!text) return null;
+      var json = JSON.parse(text);
+      return wantFullResponse ? json : json.data;
     }
     if (shouldRetry(status) && attempt < ASANA_MAX_RETRIES) {
       var headers = res.getHeaders();
@@ -171,4 +173,25 @@ function asanaCreateTask_(t) {
 
 function asanaGetTask_(gid) {
   return asanaFetch_('get', '/tasks/' + gid + '?opt_fields=name,assignee.name,due_on,memberships.section.name,tags.name,notes');
+}
+
+/** All tasks in a project, following Asana's pages of 100 (next_page.offset). */
+function asanaListProjectTasks_(projectGid, optFields) {
+  var all = [];
+  var offset = null;
+  do {
+    var path = '/projects/' + projectGid + '/tasks?limit=100&opt_fields=' + encodeURIComponent(optFields) + (offset ? '&offset=' + encodeURIComponent(offset) : '');
+    var page = asanaFetch_('get', path, null, true);
+    all = all.concat(page.data || []);
+    offset = page.next_page ? page.next_page.offset : null;
+  } while (offset);
+  return all;
+}
+
+function asanaUpdateTask_(gid, fields) {
+  return asanaFetch_('put', '/tasks/' + gid, fields);
+}
+
+function asanaMoveToSection_(taskGid, sectionName) {
+  asanaFetch_('post', '/sections/' + activeSectionGid_(sectionName) + '/addTask', { task: taskGid });
 }
